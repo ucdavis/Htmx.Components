@@ -236,8 +236,22 @@ convert_type_links_in_file() {
     
     [[ "$VERBOSE" == true ]] && print_status "Processing: $file"
     
+    # Validate file exists and is readable
+    if [[ ! -f "$file" ]]; then
+        [[ "$VERBOSE" == true ]] && print_warning "File not found: $file"
+        return 1
+    fi
+    
+    if [[ ! -r "$file" ]]; then
+        [[ "$VERBOSE" == true ]] && print_warning "File not readable: $file"
+        return 1
+    fi
+    
     # Create backup for safety
-    cp "$file" "${file}.bak"
+    if ! cp "$file" "${file}.bak"; then
+        [[ "$VERBOSE" == true ]] && print_warning "Failed to create backup for: $file"
+        return 1
+    fi
     
     # Process each type mapping
     for mapping in "${mappings[@]}"; do
@@ -249,20 +263,24 @@ convert_type_links_in_file() {
         base_api_url="../../api/${namespace}.${type_name}.html"
         
         # Convert simple type references (e.g., `TypeName` -> [`TypeName`](url))
-        if grep -qF "\`${type_name}\`" "$file" && ! grep -qF "[\`${type_name}\`](" "$file"; then
-            safe_sed "s|\`${type_name}\`|[\`${type_name}\`](${base_api_url})|g" "$file"
+        if grep -qF "\`${type_name}\`" "$file" 2>/dev/null && ! grep -qF "[\`${type_name}\`](" "$file" 2>/dev/null; then
+            if ! safe_sed "s|\`${type_name}\`|[\`${type_name}\`](${base_api_url})|g" "$file"; then
+                [[ "$VERBOSE" == true ]] && print_warning "Failed to process simple type: $type_name in $file"
+            fi
         fi
         
         # Convert generic type references for specific patterns
         if [[ "$type_name" =~ ^(ModelHandler|TableModel|TableColumnModel|.*Builder)$ ]]; then
-            if grep -qF "\`${type_name}<" "$file" && ! grep -qF "[\`${type_name}<" "$file"; then
+            if grep -qF "\`${type_name}<" "$file" 2>/dev/null && ! grep -qF "[\`${type_name}<" "$file" 2>/dev/null; then
                 if command -v perl >/dev/null 2>&1; then
-                    perl -i -pe "
+                    if ! perl -i -pe "
                         s|\`${type_name}<([^>]+)>\`|
                             my \$type_params = \$1;
                             my \$param_count = (\$type_params =~ tr/,/,/) + 1;
                             \"[\\\`${type_name}<\$type_params>\\\`](../../api/${namespace}.${type_name}-\$param_count.html)\"
-                        |gex" "$file"
+                        |gex" "$file" 2>/dev/null; then
+                        [[ "$VERBOSE" == true ]] && print_warning "Failed to process generic type: $type_name in $file"
+                    fi
                 else
                     [[ "$VERBOSE" == true ]] && print_warning "Perl not available - skipping generic type processing for $type_name"
                 fi
@@ -302,12 +320,25 @@ convert_type_links() {
     # Process all markdown files (excluding API directory)
     local files_processed=0
     local files_modified=0
+    
+    # Find markdown files and process them
+    local md_files=()
     while IFS= read -r -d '' file; do
-        if convert_type_links_in_file "$file" "${mappings[@]}"; then
-            ((files_modified++))
-        fi
-        ((files_processed++))
+        md_files+=("$file")
     done < <(find "$SCRIPT_DIR" -name "*.md" -type f ! -path "*/api/*" -print0)
+    
+    [[ "$VERBOSE" == true ]] && print_status "Found ${#md_files[@]} markdown files to process"
+    
+    for file in "${md_files[@]}"; do
+        if [[ -f "$file" ]]; then
+            if convert_type_links_in_file "$file" "${mappings[@]}"; then
+                ((files_modified++))
+            fi
+            ((files_processed++))
+        else
+            [[ "$VERBOSE" == true ]] && print_warning "Skipping non-existent file: $file"
+        fi
+    done
     
     print_status "Processed $files_processed markdown files, modified $files_modified"
     print_success "Type link conversion completed"
