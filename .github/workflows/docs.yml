@@ -19,7 +19,7 @@ jobs:
         dotnet-version: '8.0.x'
     
     - name: Setup DocFX
-      run: dotnet tool install -g docfx
+      run: dotnet tool install -g docfx --version 2.78.3
     
     - name: Install cross-platform dependencies
       run: |
