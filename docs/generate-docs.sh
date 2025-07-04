@@ -289,13 +289,14 @@ convert_type_links_in_file() {
     done
     
     # Check if file was modified and provide feedback
-    if ! cmp -s "$file" "${file}.bak"; then
+    if ! cmp -s "$file" "${file}.bak" 2>/dev/null; then
         [[ "$VERBOSE" == true ]] && print_success "  ✓ Updated: $file"
-        rm "${file}.bak"
+        rm -f "${file}.bak" 2>/dev/null || true
         return 0
     else
         [[ "$VERBOSE" == true ]] && print_status "  - No changes needed: $file"
-        mv "${file}.bak" "$file"
+        mv "${file}.bak" "$file" 2>/dev/null || cp "${file}.bak" "$file"
+        rm -f "${file}.bak" 2>/dev/null || true
         return 1
     fi
 }
@@ -329,10 +330,28 @@ convert_type_links() {
     
     [[ "$VERBOSE" == true ]] && print_status "Found ${#md_files[@]} markdown files to process"
     
+    # Debug: show the types we found
+    if [[ "$VERBOSE" == true ]]; then
+        print_status "Types found:"
+        for mapping in "${mappings[@]}"; do
+            echo "  - $mapping"
+        done
+    fi
+    
     for file in "${md_files[@]}"; do
         if [[ -f "$file" ]]; then
-            if convert_type_links_in_file "$file" "${mappings[@]}"; then
+            [[ "$VERBOSE" == true ]] && print_status "Processing file: $file"
+            # Pass mappings as separate arguments, handle return code explicitly
+            set +e  # Temporarily disable exit on error
+            convert_type_links_in_file "$file" "${mappings[@]}"
+            local result=$?
+            set -e  # Re-enable exit on error
+            
+            if [[ $result -eq 0 ]]; then
                 ((files_modified++))
+                [[ "$VERBOSE" == true ]] && print_status "File was modified"
+            else
+                [[ "$VERBOSE" == true ]] && print_status "File was not modified or had issues"
             fi
             ((files_processed++))
         else
