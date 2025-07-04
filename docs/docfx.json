@@ -37,6 +37,7 @@
                     "articles/**.md",
                     "articles/**/toc.yml",
                     "toc.yml",
+                    "navbar.yml",
                     "*.md"
                 ]
             }
@@ -52,7 +53,6 @@
         "globalMetadataFiles": [],
         "fileMetadataFiles": [],
         "template": [
-            "default",
             "modern"
         ],
         "postProcessors": [],
@@ -61,6 +61,11 @@
         "keepFileLink": false,
         "cleanupCacheHistory": false,
         "disableGitFeatures": false,
+        "sitemap": {
+            "baseUrl": "https://ucdavis.github.io/Htmx.Components/",
+            "priority": 0.5,
+            "changefreq": "daily"
+        },
         "globalMetadata": {
             "_appTitle": "HTMX Components",
             "_appName": "HTMX Components",
@@ -68,8 +73,15 @@
             "_appFooter": "© 2024 HTMX Components Contributors",
             "_enableSearch": true,
             "_enableNewTab": true,
+            "_disableNavbar": false,
+            "_disableBreadcrumb": false,
+            "_disableTocFilter": false,
+            "_disableAffix": false,
+            "_navbarPath": "navbar.yml",
+            "_tocPath": "toc.yml",
+            "_siteName": "HTMX Components Documentation",
             "_gitContribute": {
-                "repo": "https://github.com/your-org/htmx-components",
+                "repo": "https://github.com/ucdavis/Htmx.Components",
                 "branch": "main",
                 "path": ""
             },
