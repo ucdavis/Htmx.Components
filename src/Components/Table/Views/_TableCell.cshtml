@@ -1,0 +1,20 @@
+@using Htmx.Components.Table.Models
+@using System.Text.Encodings.Web
+@inject Htmx.Components.Models.ViewPaths ViewPaths
+
+@model TableCellPartialModel
+
+@{
+    var value = Model.Column.GetValue(Model.Row);
+    var isEditing = Model.Column.IsEditable && Model.Row.IsEditing;
+}
+
+@if (isEditing)
+{
+    var inputModel = await Model.Column.GetInputModel(Model.Row);
+    @await Html.PartialAsync(ViewPaths.Input, inputModel)
+}
+else
+{
+    @Html.Encode(value?.ToString())
+}

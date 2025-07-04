@@ -1,0 +1,59 @@
+@using Htmx.Components.Table.Models
+@model ITableModel
+<div id="table-pagination">
+        <div class="flex justify-center items-center my-4 space-x-2">
+                <div class="join">
+                        <button class="btn btn-sm join-item"
+                                hx-post="@Url.Action("SetPage", "Form", new { typeId = Model.TypeId })" hx-swap="none"
+                                hx-vals='{"page": 1}' disabled="@(Model.State.Page <= 1)"
+                                hx-disabled-elt="this">First</button>
+                        <button class="btn btn-sm join-item"
+                                hx-post="@Url.Action("SetPage", "Form", new { typeId = Model.TypeId })" hx-swap="none"
+                                hx-vals='{"page": @(Model.State.Page - 1)}' disabled="@(Model.State.Page <= 1)"
+                                hx-disabled-elt="this">Prev</button>
+                        <button type="button" class="btn btn-sm join-item btn-disabled cursor-default select-none"
+                                tabindex="-1">page</button>
+                        <input type="number" min="1" max="@Model.PageCount" id="table-page" name="page"
+                                class="input input-bordered input-sm join-item text-left" style="width:5rem;"
+                                value="@Model.State.Page"
+                                hx-post="@Url.Action("SetPage", "Form", new { typeId = Model.TypeId })" hx-swap="none"
+                                hx-trigger="change, input changed delay:500ms" />
+                        <button type="button" class="btn btn-sm join-item btn-disabled cursor-default select-none"
+                                tabindex="-1">of @Model.PageCount
+                                <span style="display:inline-block; width:1rem;"></span>
+                                <span class="text-sm">page size</span>
+                        </button>
+                        <select class="select select-bordered select-sm join-item" style="width:5rem;"
+                                id="table-page-Size" name="pageSize"
+                                hx-post="@Url.Action("SetPageSize", "Form", new { typeId = Model.TypeId })"
+                                hx-swap="none" hx-trigger="change">
+                                <option value="10" selected="@(Model.State.PageSize == 10)">10</option>
+                                <option value="25" selected="@(Model.State.PageSize == 25)">25</option>
+                                <option value="50" selected="@(Model.State.PageSize == 50)">50</option>
+                                <option value="100" selected="@(Model.State.PageSize == 100)">100</option>
+                        </select>
+                        <button class="btn btn-sm join-item"
+                                hx-post="@Url.Action("SetPage", "Form", new { typeId = Model.TypeId })" hx-swap="none"
+                                hx-vals='{"page": @(Model.State.Page + 1)}'
+                                disabled="@(Model.State.Page >= Model.PageCount)" hx-disabled-elt="this">Next</button>
+                        <button class="btn btn-sm join-item"
+                                hx-post="@Url.Action("SetPage", "Form", new { typeId = Model.TypeId })" hx-swap="none"
+                                hx-vals='{"page": @Model.PageCount}' disabled="@(Model.State.Page >= Model.PageCount)"
+                                hx-disabled-elt="this">Last</button>
+                        @* <button type="button" class="btn btn-sm join-item btn-disabled cursor-default select-none"
+                                tabindex="-1">
+                                <span style="display:inline-block; width:1rem;"></span>
+                                <span class="text-sm">page size</span>
+                        </button>
+                        <select class="select select-bordered select-sm join-item" style="width:5rem;"
+                                id="table-page-Size" name="pageSize"
+                                hx-post="@Url.Action("SetPageSize", "Form", new { typeId = Model.TypeId })"
+                                hx-swap="none" hx-trigger="change">
+                                <option value="10" selected="@(Model.State.PageSize == 10)">10</option>
+                                <option value="25" selected="@(Model.State.PageSize == 25)">25</option>
+                                <option value="50" selected="@(Model.State.PageSize == 50)">50</option>
+                                <option value="100" selected="@(Model.State.PageSize == 100)">100</option>
+                        </select> *@
+                </div>
+        </div>
+</div>

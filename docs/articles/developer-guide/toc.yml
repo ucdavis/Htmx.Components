@@ -1,0 +1,16 @@
+- name: Developer Guide
+  href: architecture.md
+- name: Architecture Overview
+  href: architecture.md
+- name: Component Architecture
+  href: component-architecture.md
+- name: JavaScript Architecture
+  href: javascript-architecture.md
+- name: Design Choices
+  href: design-choices.md
+- name: Future Directions
+  href: future-directions.md
+- name: Custom Providers
+  href: custom-providers.md
+- name: Contributing
+  href: contributing.md

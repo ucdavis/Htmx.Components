@@ -1,0 +1,11 @@
+@using Htmx.Components.Table.Models
+@inject Htmx.Components.Models.ViewPaths ViewPaths
+@model ITableModel
+
+<tbody id="table-body" hx-ext="tableinline">
+    @foreach (var rowContext in Model.Rows)
+    {
+        // individual rows are split out into separate view in order to support single-row editing  
+        @await Html.PartialAsync(ViewPaths.Table.Row, (Model, rowContext))
+    }
+</tbody>

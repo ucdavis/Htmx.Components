@@ -1,0 +1,107 @@
+// HTMX Authentication Retry for Htmx.Components
+// Captures and retries failed requests after successful authentication
+// Handles popup-based login recovery for 401 errors
+
+// always capture details of the last htmx event in order to
+// refire it after error recovery, such as login after a 401 error
+let lastRequestContext = null;
+let retryInProgress = false;
+
+// capture the triggering event and metadata
+document.body.addEventListener("htmx:beforeRequest", function (evt) {
+    const config = evt.detail.requestConfig;
+    const triggeringEvent = config.triggeringEvent;
+
+    if (!(triggeringEvent instanceof Event)) return;
+
+    lastRequestContext = {
+        elt: config.elt,
+        eventType: triggeringEvent.type,
+        eventClass: triggeringEvent.constructor.name,
+        eventInit: getEventInit(triggeringEvent),
+    };
+});
+
+document.body.addEventListener('htmx:responseError', async function (evt) {
+    const xhr = evt.detail.xhr;
+
+    const failureHeader = xhr.getResponseHeader("X-Auth-Failure");
+    if (!retryInProgress && xhr.status === 401 && failureHeader?.startsWith("popup-login:")) {
+        // get the URL from the header
+        const loginUrl = failureHeader.substring("popup-login:".length);
+        const popup = window.open(loginUrl, 'authPopup', 'width=600,height=700');
+
+        const loginSuccess = await new Promise(resolve => {
+            window.addEventListener('message', function listener(e) {
+                if (e.data === 'login-success') {
+                    window.removeEventListener('message', listener);
+                    resolve(true);
+                }
+            });
+        });
+
+        if (loginSuccess && lastRequestContext?.elt) {
+            const { elt, eventType, eventClass, eventInit } = lastRequestContext;
+
+            const EventCtor = window[eventClass] || Event;
+            const retryEvent = new EventCtor(eventType, eventInit);
+
+            // dispatch the reconstructed event
+            elt.dispatchEvent(retryEvent);
+        }
+
+        // cleanup
+        retryInProgress = false;
+        lastRequestContext = null;
+    }
+});
+
+// capture information neccessary to reconstruct the triggering event
+function getEventInit(event) {
+    const base = {
+        bubbles: event.bubbles,
+        cancelable: event.cancelable,
+        composed: event.composed,
+    };
+
+    if (event instanceof MouseEvent) {
+        return {
+            ...base,
+            screenX: event.screenX,
+            screenY: event.screenY,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+            altKey: event.altKey,
+            metaKey: event.metaKey,
+            button: event.button,
+            buttons: event.buttons,
+            relatedTarget: event.relatedTarget,
+        };
+    }
+
+    if (event instanceof KeyboardEvent) {
+        return {
+            ...base,
+            key: event.key,
+            code: event.code,
+            location: event.location,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+            altKey: event.altKey,
+            metaKey: event.metaKey,
+            repeat: event.repeat,
+            isComposing: event.isComposing,
+        };
+    }
+
+    if (event instanceof CustomEvent) {
+        return {
+            ...base,
+            detail: event.detail,
+        };
+    }
+
+    return base;
+}

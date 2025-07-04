@@ -1,0 +1,41 @@
+/* Dim and disable everything except the editing row */
+.editing-mode tbody > tr:not(.editing-row),
+.editing-mode thead,
+.editing-mode #table-filter-row {
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Disable pagination when table container is in editing mode */
+#table-container.editing-mode ~ div #table-pagination {
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Re-enable interactivity for the row being edited */
+.editing-mode .editing-row {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Disable all buttons globally in editing mode */
+.editing-mode .btn,
+.editing-mode input,
+.editing-mode select,
+.editing-mode textarea,
+.editing-mode a {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* Enable interaction inside the editing row */
+.editing-mode .editing-row .btn,
+.editing-mode .editing-row input,
+.editing-mode .editing-row select,
+.editing-mode .editing-row textarea,
+.editing-mode .editing-row a {
+  pointer-events: auto;
+  opacity: 1;
+}

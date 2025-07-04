@@ -1,0 +1,110 @@
+// Blur-Save coordination for Htmx.Components
+// Prevents race conditions between blur events (that update page state) and save/submit operations
+// This applies to tables, forms, wizards, and any other components that use incremental state updates
+
+// Track pending blur requests to prevent race conditions with save operations
+let pendingBlurRequests = new Set();
+
+// Handle race condition between blur events and save/submit button clicks
+document.addEventListener('htmx:beforeRequest', function (event) {
+    const element = event.detail.elt;
+    const requestConfig = event.detail.requestConfig;
+
+    // Check if this is a blur-triggered request (SetValue or similar state update)
+    const isBlurRequest = element.hasAttribute('hx-trigger') &&
+        element.getAttribute('hx-trigger').includes('blur') &&
+        (requestConfig.path && (
+            requestConfig.path.includes('/SetValue') ||
+            requestConfig.path.includes('/UpdateField') ||
+            requestConfig.path.includes('/ValueChanged')
+        ));
+
+    // Check if this is a save/submit request
+    const isSaveRequest = requestConfig.path && (
+        requestConfig.path.includes('/Save') ||
+        requestConfig.path.includes('/Submit') ||
+        requestConfig.path.includes('/Update') ||
+        requestConfig.path.includes('/Create')
+    );
+
+    if (isBlurRequest) {
+        // Track this blur request
+        pendingBlurRequests.add(element);
+    }
+
+    if (isSaveRequest) {
+        // Check if there are any focused inputs that might trigger blur events
+        const focusedInput = document.querySelector('input:focus, select:focus, textarea:focus');
+        const hasPendingBlur = pendingBlurRequests.size > 0;
+
+        if (focusedInput || hasPendingBlur) {
+            // Prevent the save request from proceeding
+            event.preventDefault();
+
+            // Force blur on any focused input
+            if (focusedInput) {
+                focusedInput.blur();
+            }
+
+            // Wait for pending blur requests to complete before retrying save
+            const maxRetries = 40; // Maximum 1 second wait (40 * 25ms)
+            let retryCount = 0;
+
+            const retryAfterBlur = () => {
+                if (pendingBlurRequests.size === 0) {
+                    // All blur requests completed, now trigger the save
+                    htmx.trigger(element, 'click');
+                } else if (retryCount < maxRetries) {
+                    // Still have pending requests, check again in a short time
+                    retryCount++;
+                    setTimeout(retryAfterBlur, 25);
+                } else {
+                    // Timeout reached, proceed with save anyway to avoid hanging
+                    console.warn('Blur-Save coordination: Timeout waiting for blur requests to complete, proceeding with save');
+                    htmx.trigger(element, 'click');
+                }
+            };
+
+            // Start checking for completion (small delay to ensure blur event fires)
+            setTimeout(retryAfterBlur, 25);
+        }
+    }
+});
+
+// Clean up completed blur requests
+document.addEventListener('htmx:afterRequest', function (event) {
+    const element = event.detail.elt;
+    const requestConfig = event.detail.requestConfig;
+
+    // Remove completed blur requests from tracking
+    const isBlurRequest = element.hasAttribute('hx-trigger') &&
+        element.getAttribute('hx-trigger').includes('blur') &&
+        (requestConfig.path && (
+            requestConfig.path.includes('/SetValue') ||
+            requestConfig.path.includes('/UpdateField') ||
+            requestConfig.path.includes('/ValueChanged')
+        ));
+
+    if (isBlurRequest) {
+        pendingBlurRequests.delete(element);
+    }
+});
+
+// Also clean up on request errors to prevent hanging
+document.addEventListener('htmx:responseError', function (event) {
+    const element = event.detail.elt;
+    const requestConfig = event.detail.requestConfig;
+
+    // Remove failed blur requests from tracking
+    const isBlurRequest = element.hasAttribute('hx-trigger') &&
+        element.getAttribute('hx-trigger').includes('blur') &&
+        (requestConfig.path && (
+            requestConfig.path.includes('/SetValue') ||
+            requestConfig.path.includes('/UpdateField') ||
+            requestConfig.path.includes('/ValueChanged')
+        ));
+
+    if (isBlurRequest) {
+        pendingBlurRequests.delete(element);
+    }
+});

@@ -1,0 +1,66 @@
+@using Htmx.Components.Models
+@model IActionSet
+
+<nav id="navbar">
+    <div>
+        <ul class="menu menu-horizontal px-1">
+            @foreach (var item in Model.Items)
+            {
+                if (item is ActionModel actionModel)
+                {
+                    <li>
+                        <a class="whitespace-nowrap @(actionModel.CssClass ?? "") @(actionModel.IsActive ? "active bg-primary text-primary-content cursor-default pointer-events-none" : "")"
+                            @foreach (var attr in actionModel.Attributes)
+                            {
+                                @Html.Raw($" {attr.Key}=\"{attr.Value}\"")
+                            }
+                            @(actionModel.IsActive ? " tabindex=\"-1\" aria-current=\"page\"" : "")>
+                            @if (!string.IsNullOrEmpty(actionModel.Icon))
+                            {
+                                <i class="@actionModel.Icon"></i>
+                            }
+                            @actionModel.Label
+                        </a>
+                    </li>
+                }
+                else if (item is ActionGroup group)
+                {
+                    var isActive = group.Items.OfType<ActionModel>().Any(i => i.IsActive);
+                    <li>
+                        <details>
+                            <summary class="@(group.CssClass ?? "") @(isActive ? "active bg-primary text-primary-content" : "")">
+                                @if (!string.IsNullOrEmpty(group.Icon))
+                                {
+                                    <i class="@group.Icon"></i>
+                                }
+                                @group.Label
+                            </summary>
+                            <ul class="dropdown-content menu p-2 bg-base-100 rounded-box w-52">
+                                @foreach (var sub in group.Items)
+                                {
+                                    if (sub is ActionModel subModel)
+                                    {
+                                        <li>
+                                            <a class="whitespace-nowrap @(subModel.CssClass) @(subModel.IsActive ? "active bg-primary text-primary-content cursor-default pointer-events-none" : "")"
+                                                @foreach (var attr in subModel.Attributes)
+                                                {
+                                                    @Html.Raw($" {attr.Key}=\"{attr.Value}\"")
+                                                }
+                                                @(subModel.IsActive ? " tabindex=\"-1\" aria-current=\"page\"" : "")>
+                                                @if (!string.IsNullOrEmpty(subModel.Icon))
+                                                {
+                                                    <i class="@subModel.Icon"></i>
+                                                }
+                                                @subModel.Label
+                                            </a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </details>
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+</nav>

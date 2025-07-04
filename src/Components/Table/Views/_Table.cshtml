@@ -1,0 +1,35 @@
+@using Htmx.Components.Table.Models
+@inject Htmx.Components.Models.ViewPaths ViewPaths
+@model ITableModel
+
+<div id="table-container" class="relative flex-1 flex flex-col min-h-0">
+    @await Html.PartialAsync(ViewPaths.Table.EditClassToggle, Model)
+    @await Html.PartialAsync(ViewPaths.Table.TableActionList, Model)
+    <table class="table w-full">
+        <thead class="sticky top-[4rem] bg-base-100 z-10">
+            @await Html.PartialAsync(ViewPaths.Table.Header, Model)
+            <tr id="table-filter-row">
+                @foreach (var column in Model.Columns)
+                {
+                    <th>
+                        @if (column.Filterable)
+                        {
+                            @if (!string.IsNullOrEmpty(column.FilterPartialView))
+                            {
+                                @await Html.PartialAsync(column.FilterPartialView, column)
+                            }
+                            else
+                            {
+                                @await Html.PartialAsync(ViewPaths.Table.FilterText, column)
+                            }
+                        }
+                    </th>
+                }
+            </tr>
+        </thead>
+        @await Html.PartialAsync(ViewPaths.Table.Body, Model)
+    </table>
+</div>
+<div class="sticky bottom-[4rem] bg-base-100 z-10">
+    @await Html.PartialAsync(ViewPaths.Table.Pagination, Model)
+</div>

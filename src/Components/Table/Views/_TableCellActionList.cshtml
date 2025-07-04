@@ -1,0 +1,25 @@
+@using Htmx.Components.Table.Models
+@using System.Text.Encodings.Web
+@using System.Threading.Tasks
+@model TableCellPartialModel
+
+@{
+    var actions = await Model.Column.GetActionsAsync(Model.Row);
+}
+
+@foreach (var action in actions)
+{
+    <button
+        class="btn btn-sm @action.CssClass"
+        @foreach (var attr in action.Attributes)
+        {
+            var encodedValue = HtmlEncoder.Default.Encode(attr.Value);
+            @Html.Raw($"{attr.Key}=\"{encodedValue}\"")
+        }>
+        @if (!string.IsNullOrWhiteSpace(action.Icon))
+        {
+            <i class="@action.Icon"></i>
+        }
+        @action.Label
+    </button>
+}

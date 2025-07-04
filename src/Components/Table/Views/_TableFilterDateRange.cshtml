@@ -1,0 +1,14 @@
+@using Htmx.Components.Table.Models
+@model ITableColumnModel
+
+<div class="flex space-x-1">
+       <input type="date" class="input input-bordered input-sm w-1/2" id="table-filter-@Model.Header-min" name="filter"
+              placeholder="From" hx-post="@Url.Action("SetFilter", "Form", new { typeId = Model.Table.TypeId })"
+              hx-vals='{"input": 0, "column": "@Model.DataName"}' hx-swap="none"
+              hx-trigger="input changed delay:500ms" />
+
+       <input type="date" class="input input-bordered input-sm w-1/2" id="table-filter-@Model.Header-max" name="filter"
+              placeholder="To" hx-post="@Url.Action("SetFilter", "Form", new { typeId = Model.Table.TypeId })"
+              hx-vals='{"input": 1, "column": "@Model.DataName"}' hx-swap="none"
+              hx-trigger="input changed delay:500ms" />
+</div>

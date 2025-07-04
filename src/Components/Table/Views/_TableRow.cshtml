@@ -1,0 +1,20 @@
+@using Htmx.Components.Table.Models
+@model (ITableModel table, ITableRowContext row)
+@inject Htmx.Components.Models.ViewPaths ViewPaths
+
+@{
+  var isEditing = Model.row.IsEditing;
+}
+
+<tr id="@Model.row.RowId" class="@(isEditing ? "editing-row" : "")">
+  @foreach (var column in Model.table.Columns)
+  {
+    var cellPartialView = string.IsNullOrEmpty(column.CellPartialView)
+    ? ViewPaths.Table.Cell
+    : column.CellPartialView;
+    var cellModel = new TableCellPartialModel { Table = Model.table, Row = Model.row, Column = column };
+    <td>
+      @await Html.PartialAsync(cellPartialView, cellModel)
+    </td>
+  }
+</tr>

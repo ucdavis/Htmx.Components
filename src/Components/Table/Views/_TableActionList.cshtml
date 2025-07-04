@@ -1,0 +1,22 @@
+@using System.Text.Encodings.Web
+@using Htmx.Components.Table.Models
+@model ITableModel
+
+<div id="table-action-list" class="flex justify-end mb-2 space-x-2">
+    @foreach (var action in await Model.GetActionsAsync())
+    {
+        <button
+            class="btn btn-sm @action.CssClass"
+            @foreach (var attr in action.Attributes)
+            {
+                var encodedValue = HtmlEncoder.Default.Encode(attr.Value);
+                @Html.Raw($"{attr.Key}=\"{encodedValue}\"")
+            }>
+            @if (!string.IsNullOrWhiteSpace(action.Icon))
+            {
+                <i class="@action.Icon"></i>
+            }
+            @action.Label
+        </button>
+    }
+</div>

@@ -1,0 +1,79 @@
+# filterConfig.yml
+apiRules:
+- include:
+    uidRegex: ^Htmx\.Components
+    type: Namespace
+- include:
+    uidRegex: ^Htmx\.Components\.Models
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\.Services
+    type: Interface
+- include:
+    uidRegex: ^Htmx\.Components\.Components
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\.Attributes
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\.AuthStatus
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\.NavBar
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\.Table
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\.Authorization
+    type: Interface
+- include:
+    uidRegex: ^Htmx\.Components\.Extensions
+    type: Class
+# Include internal types that are relevant for developers
+- include:
+    uidRegex: ^Htmx\.Components\..*\.Internal\..*Filter
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\..*ActionAttribute
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\.Models\..*Config
+    type: Class
+- include:
+    uidRegex: ^Htmx\.Components\.Models\..*Options
+    type: Class
+- include:
+    hasAttribute:
+      uid: System.ComponentModel.EditorBrowsableAttribute
+      ctorArguments:
+      - System.ComponentModel.EditorBrowsableState.Never
+- exclude:
+    uidRegex: ^Microsoft\.AspNetCore.*
+    type: Namespace
+- exclude:
+    uidRegex: ^Microsoft\.Extensions.*
+    type: Namespace
+# Exclude specific utility classes that aren't relevant for documentation
+- exclude:
+    uidRegex: ^Htmx\.Components\.Utilities
+    type: Class
+- exclude:
+    uidRegex: ^Htmx\.Components\.Configuration
+    type: Class
+- exclude:
+    uidRegex: ^Htmx\.Components\.Controllers
+    type: Class
+- exclude:
+    uidRegex: ^Htmx\.Components\.State\.PageStateMiddleware
+    type: Class
+- exclude:
+    uidRegex: ^Htmx\.Components\.ViewResults
+    type: Class
+# Exclude some internal utility classes that aren't relevant for developers
+- exclude:
+    uidRegex: ^Htmx\.Components\..*\.HtmxComponentsApplicationPartMarker
+    type: Class
+- exclude:
+    uidRegex: ^Htmx\.Components\.ViewResults\.NullView
+    type: Class

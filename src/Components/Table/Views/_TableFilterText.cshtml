@@ -1,0 +1,6 @@
+@using Htmx.Components.Table.Models
+@model ITableColumnModel
+
+<input type="text" class="input input-bordered input-sm w-full" id="table-filter-@Model.Header" name="filter"
+       hx-post="@Url.Action("SetFilter", "Form", new { typeId = Model.Table.TypeId })"
+       hx-vals='{"input": 0, "column": "@Model.DataName"}' hx-swap="none" hx-trigger="input changed delay:500ms" />

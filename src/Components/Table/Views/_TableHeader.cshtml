@@ -1,0 +1,26 @@
+@using Htmx.Components.Table.Models
+@model ITableModel
+
+<tr id="table-header">
+    @foreach (var column in Model.Columns)
+    {
+        if (column.Sortable)
+        {
+            var isCurrentSort = Model.State.SortColumn == column.Header;
+            var nextSortDirection = isCurrentSort && Model.State.SortDirection == "asc" ? "desc" : "asc";
+            var indicator = isCurrentSort ? (Model.State.SortDirection == "asc" ? "▲" : "▼") : "";
+            <th>
+                <a href="#" hx-post="@Url.Action("SetSort", "Form", new { typeId = Model.TypeId })"
+                    hx-vals='{"column": "@column.Header", "direction": "@nextSortDirection"}' hx-swap="none">
+                    @column.Header @indicator
+                </a>
+            </th>
+        }
+        else
+        {
+            <th>
+                @column.Header
+            </th>
+        }
+    }
+</tr>

@@ -1,0 +1,87 @@
+{
+    "metadata": [
+        {
+            "src": [
+                {
+                    "files": [
+                        "**/*.cs"
+                    ],
+                    "exclude": [
+                        "**/bin/**",
+                        "**/obj/**"
+                    ],
+                    "src": "../"
+                }
+            ],
+            "dest": "api",
+            "includePrivateMembers": false,
+            "disableGitFeatures": false,
+            "disableDefaultFilter": false,
+            "noRestore": false,
+            "namespaceLayout": "flattened",
+            "memberLayout": "samePage",
+            "allowCompilationErrors": true,
+            "filter": "filterConfig.yml"
+        }
+    ],
+    "build": {
+        "content": [
+            {
+                "files": [
+                    "api/**.yml",
+                    "api/index.md"
+                ]
+            },
+            {
+                "files": [
+                    "articles/**.md",
+                    "articles/**/toc.yml",
+                    "toc.yml",
+                    "*.md"
+                ]
+            }
+        ],
+        "resource": [
+            {
+                "files": [
+                    "images/**"
+                ]
+            }
+        ],
+        "dest": "_site",
+        "globalMetadataFiles": [],
+        "fileMetadataFiles": [],
+        "template": [
+            "default",
+            "modern"
+        ],
+        "postProcessors": [],
+        "markdownEngineName": "markdig",
+        "noLangKeyword": false,
+        "keepFileLink": false,
+        "cleanupCacheHistory": false,
+        "disableGitFeatures": false,
+        "globalMetadata": {
+            "_appTitle": "HTMX Components",
+            "_appName": "HTMX Components",
+            "_appLogoPath": "images/logo.svg",
+            "_appFooter": "© 2024 HTMX Components Contributors",
+            "_enableSearch": true,
+            "_enableNewTab": true,
+            "_gitContribute": {
+                "repo": "https://github.com/your-org/htmx-components",
+                "branch": "main",
+                "path": ""
+            },
+            "_gitUrlPattern": "github"
+        },
+        "fileMetadata": {
+            "_tocTitle": {
+                "api/**.yml": "API Reference"
+            },
+            "_navTitle": {
+                "api/**.yml": "API"
+            }
+        }
+    }
+}

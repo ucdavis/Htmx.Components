@@ -1,0 +1,42 @@
+@model Htmx.Components.AuthStatus.Models.AuthStatusViewModel
+
+<div id="auth-status">
+    @if (Model.IsAuthenticated)
+    {
+        <div class="avatar ml-4">
+            <div class="ring-primary ring-offset-base-100 w-12 rounded-full bg-base-300">
+                <span class="flex items-center justify-center h-full text-xs text-base-content">
+                    @if (!string.IsNullOrEmpty(Model.ProfileImageUrl))
+                    {
+                        <img src="@Model.ProfileImageUrl" alt="Profile" />
+                    }
+                    else
+                    {
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-base-content fill-base-content"
+                            viewBox="0 0 24 24">
+                            <circle cx="12" cy="8" r="4" />
+                            <path d="M4 20c0-2.21 3.582-4 8-4s8 1.79 8 4v1H4v-1z" />
+                        </svg>
+                    }
+                </span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <a href="@Model.LoginUrl" hx-get="@Model.LoginUrl" hx-push-url="true" hx-trigger="click" class=""
+            style="z-index: 1050;">
+            <div class="avatar ml-4 tooltip tooltip-bottom" data-tip="Login" style="z-index: 1050;">
+                <div class="ring-primary ring-offset-base-100 w-12 rounded-full bg-base-300">
+                    <span class="flex items-center justify-center h-full text-xs text-base-content">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-base-content" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M18 12h-9m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                    </span>
+                </div>
+            </div>
+        </a>
+    }
+</div>
