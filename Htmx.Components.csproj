@@ -6,7 +6,38 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
+    
+    <!-- NuGet Package Metadata -->
+    <PackageId>Htmx.Components</PackageId>
+    <Title>Htmx.Components</Title>
+    <PackageDescription>A comprehensive ASP.NET Core library for building interactive web applications with server-side rendering and HTMX integration. Provides ready-to-use components, state management, and built-in authorization with minimal JavaScript.</PackageDescription>
+    <PackageTags>htmx;aspnetcore;razor;components;server-side-rendering;interactive;web;mvc;tailwind;daisyui</PackageTags>
+    <Authors>UC Davis</Authors>
+    <Company>UC Davis</Company>
+    <Copyright>Copyright (c) 2025 UC Davis</Copyright>
+    
+    <!-- Repository and Project URLs -->
+    <RepositoryUrl>https://github.com/ucdavis/Htmx.Components</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/ucdavis/Htmx.Components</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageIcon>logo.png</PackageIcon>
+    
+    <!-- Release Notes -->
+    <PackageReleaseNotes>See https://github.com/ucdavis/Htmx.Components/releases for release notes.</PackageReleaseNotes>
+    
+    <!-- Documentation -->
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+
+  <!-- Include package files -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="LICENSE" Pack="true" PackagePath="\" />
+    <None Include="docs/images/logo.png" Pack="true" PackagePath="logo.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
