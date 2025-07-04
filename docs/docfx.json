@@ -37,7 +37,6 @@
                     "articles/**.md",
                     "articles/**/toc.yml",
                     "toc.yml",
-                    "navbar.yml",
                     "*.md"
                 ]
             }
@@ -77,7 +76,6 @@
             "_disableBreadcrumb": false,
             "_disableTocFilter": false,
             "_disableAffix": false,
-            "_navbarPath": "navbar.yml",
             "_tocPath": "toc.yml",
             "_siteName": "HTMX Components Documentation",
             "_gitContribute": {
