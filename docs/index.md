@@ -12,26 +12,6 @@ A powerful .NET library that provides server-side components for building dynami
 - **Out-of-Band Updates**: Efficient partial page updates using HTMX's OOB functionality
 - **JavaScript Behaviors**: Server-generated JavaScript behaviors for enhanced interactivity
 
-## Quick Start
-
-Get up and running quickly with the essentials:
-
-```bash
-dotnet add package Htmx.Components
-```
-
-```csharp
-// Minimal setup in Program.cs
-builder.Services.AddHtmxComponents();
-builder.Services.AddMvc().AddHtmxComponentsApplicationPart();
-
-app.UseHtmxPageState();
-app.UseAuthentication();
-app.UseAuthorization();
-```
-
-**📖 [Complete Setup Guide →](articles/getting-started.md)**
-
 ## What's Inside
 
 ### [Getting Started](articles/getting-started.md)
