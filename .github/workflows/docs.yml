@@ -21,11 +21,22 @@ jobs:
     - name: Setup DocFX
       run: dotnet tool install -g docfx
     
+    - name: Install cross-platform dependencies
+      run: |
+        # Install perl for cross-platform regex processing
+        sudo apt-get update
+        sudo apt-get install -y perl
+    
+    - name: Make generate-docs.sh executable
+      run: chmod +x docs/generate-docs.sh
+    
     - name: Build Documentation
-      run: docfx docs/docfx.json
+      run: |
+        cd docs
+        ./generate-docs.sh
     
     - name: Upload Pages Artifact
-      uses: actions/upload-pages-artifact@v2
+      uses: actions/upload-pages-artifact@v3
       with:
         path: docs/_site
   
@@ -45,4 +56,4 @@ jobs:
     steps:
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@v2
+      uses: actions/deploy-pages@v4

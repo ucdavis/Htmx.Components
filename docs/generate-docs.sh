@@ -28,6 +28,21 @@ readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
 
+# Cross-platform compatibility for sed command
+# Some platforms use different sed syntax for in-place editing
+safe_sed() {
+    local pattern="$1"
+    local file="$2"
+    
+    if sed --version >/dev/null 2>&1; then
+        # GNU sed (Linux)
+        sed -i "$pattern" "$file"
+    else
+        # BSD sed (macOS) 
+        sed -i '' "$pattern" "$file"
+    fi
+}
+
 # Logging functions
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -123,6 +138,12 @@ validate_environment() {
         print_error "DocFX is not installed or not in PATH"
         print_error "Please install DocFX: https://dotnet.github.io/docfx/"
         exit 1
+    fi
+    
+    # Check for perl availability (used for advanced generic type processing)
+    if ! command -v perl &> /dev/null; then
+        print_warning "Perl not found - generic type link conversion will be limited"
+        print_warning "For Windows users: Consider installing Perl or using WSL for full functionality"
     fi
 }
 
@@ -229,7 +250,7 @@ convert_type_links_in_file() {
         
         # Convert simple type references (e.g., `TypeName` -> [`TypeName`](url))
         if grep -qF "\`${type_name}\`" "$file" && ! grep -qF "[\`${type_name}\`](" "$file"; then
-            sed -i.tmp "s|\`${type_name}\`|[\`${type_name}\`](${base_api_url})|g" "$file"
+            safe_sed "s|\`${type_name}\`|[\`${type_name}\`](${base_api_url})|g" "$file"
         fi
         
         # Convert generic type references for specific patterns
@@ -242,12 +263,11 @@ convert_type_links_in_file() {
                             my \$param_count = (\$type_params =~ tr/,/,/) + 1;
                             \"[\\\`${type_name}<\$type_params>\\\`](../../api/${namespace}.${type_name}-\$param_count.html)\"
                         |gex" "$file"
+                else
+                    [[ "$VERBOSE" == true ]] && print_warning "Perl not available - skipping generic type processing for $type_name"
                 fi
             fi
         fi
-        
-        # Clean up temporary file
-        rm -f "${file}.tmp"
     done
     
     # Check if file was modified and provide feedback
@@ -325,8 +345,16 @@ cleanup_docfx_server() {
     # Kill any remaining docfx server processes
     pkill -f "docfx.*--serve" 2>/dev/null || true
     
-    # Kill any process using our port (aggressive cleanup)
-    lsof -ti:"$port" | xargs kill -9 2>/dev/null || true
+    # Kill any process using our port (try different approaches for cross-platform compatibility)
+    if command -v lsof >/dev/null 2>&1; then
+        # Unix/Linux/macOS with lsof
+        lsof -ti:"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    elif command -v netstat >/dev/null 2>&1; then
+        # Windows/Git Bash with netstat
+        local pid
+        pid=$(netstat -ano | grep ":$port " | awk '{print $5}' | head -1)
+        [[ -n "$pid" ]] && taskkill //PID "$pid" //F 2>/dev/null || true
+    fi
     
     exit 0
 }

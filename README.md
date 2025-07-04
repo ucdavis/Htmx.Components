@@ -264,7 +264,17 @@ This architecture promotes:
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
-5. Submit a pull request
+5. Update documentation if needed (see [docs/README.md](docs/README.md) for documentation setup)
+6. Submit a pull request
+
+### Documentation
+
+The project uses DocFX to generate documentation from C# XML comments and markdown articles. The documentation is automatically built and deployed to GitHub Pages on every push to main.
+
+- **Local documentation development**: See [docs/README.md](docs/README.md)
+- **Published documentation**: https://sweber.github.io/Htmx.Components/
+- **Adding API documentation**: Add XML documentation comments to your C# code
+- **Adding articles**: Create markdown files in `docs/articles/`
 
 ## License
 
@@ -272,9 +282,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-- 📖 [Documentation](link-to-docs)
-- 🐛 [Issues](link-to-issues)
-- 💬 [Discussions](link-to-discussions)
+- 📖 [Documentation](https://sweber.github.io/Htmx.Components/)
+- 🐛 [Issues](https://github.com/sweber/Htmx.Components/issues)
+- 💬 [Discussions](https://github.com/sweber/Htmx.Components/discussions)
 
 ## Acknowledgments
 
