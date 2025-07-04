@@ -52,6 +52,7 @@
         "globalMetadataFiles": [],
         "fileMetadataFiles": [],
         "template": [
+            "default",
             "modern"
         ],
         "postProcessors": [],
