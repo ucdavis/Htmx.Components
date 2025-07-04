@@ -173,23 +173,45 @@ discover_types() {
     local src_dir="$1"
     [[ "$VERBOSE" == true ]] && print_status "Discovering types from source code in: $src_dir"
     
-    find "$src_dir" -name "*.cs" -type f | while read -r file; do
+    # Create a temporary file to store results
+    local temp_file=$(mktemp)
+    
+    # Find all C# files and process them
+    find "$src_dir" -name "*.cs" -type f > "${temp_file}.files" 2>/dev/null || true
+    
+    if [[ ! -s "${temp_file}.files" ]]; then
+        [[ "$VERBOSE" == true ]] && print_warning "No .cs files found in $src_dir"
+        rm -f "${temp_file}.files" "${temp_file}"
+        return 1
+    fi
+    
+    while IFS= read -r file; do
+        [[ ! -f "$file" ]] && continue
+        
         # Extract namespace from the file
         local namespace
-        namespace=$(grep "^namespace " "$file" | head -1 | sed 's/namespace //' | sed 's/[;{].*//')
+        namespace=$(grep "^namespace " "$file" 2>/dev/null | head -1 | sed 's/namespace //' | sed 's/[;{].*//' || true)
         
         if [[ -n "$namespace" ]]; then
             # Find type declarations and extract type names
-            grep -E "^[[:space:]]*(public|internal) (class|interface|enum|struct) " "$file" | while read -r line; do
+            grep -E "^[[:space:]]*(public|internal) (class|interface|enum|struct) " "$file" 2>/dev/null | while IFS= read -r line; do
                 local type_name
-                type_name=$(echo "$line" | sed -E 's/.*(public|internal) (class|interface|enum|struct) ([A-Za-z_][A-Za-z0-9_]*).*/\3/')
+                type_name=$(echo "$line" | sed -E 's/.*(public|internal) (class|interface|enum|struct) ([A-Za-z_][A-Za-z0-9_]*).*/\3/' 2>/dev/null || true)
                 
                 if [[ -n "$type_name" && "$type_name" != "$line" ]]; then
                     echo "${type_name}:${namespace}"
                 fi
-            done
+            done >> "$temp_file"
         fi
-    done | sort -u
+    done < "${temp_file}.files"
+    
+    # Output unique results
+    if [[ -s "$temp_file" ]]; then
+        sort -u "$temp_file"
+    fi
+    
+    # Cleanup
+    rm -f "${temp_file}.files" "$temp_file"
 }
 
 # Find the source directory containing C# files
@@ -197,14 +219,38 @@ find_source_directory() {
     local script_dir="$1"
     local candidates=("$script_dir/../src" "$script_dir/..")
     
+    [[ "$VERBOSE" == true ]] && print_status "Looking for source directory from: $script_dir"
+    
     for dir in "${candidates[@]}"; do
-        if [[ -d "$dir" ]] && find "$dir" -name "*.cs" -type f | head -1 >/dev/null 2>&1; then
-            echo "$dir"
-            return 0
+        [[ "$VERBOSE" == true ]] && print_status "Checking candidate directory: $dir"
+        
+        if [[ -d "$dir" ]]; then
+            [[ "$VERBOSE" == true ]] && print_status "Directory exists: $dir"
+            
+            # Count C# files
+            local cs_count
+            cs_count=$(find "$dir" -name "*.cs" -type f 2>/dev/null | wc -l)
+            [[ "$VERBOSE" == true ]] && print_status "Found $cs_count C# files in $dir"
+            
+            if [[ $cs_count -gt 0 ]]; then
+                echo "$dir"
+                return 0
+            fi
+        else
+            [[ "$VERBOSE" == true ]] && print_status "Directory does not exist: $dir"
         fi
     done
     
     print_error "Could not find C# source files. Tried: ${candidates[*]}"
+    
+    # Debug: show what's actually in the script directory
+    if [[ "$VERBOSE" == true ]]; then
+        print_status "Contents of script directory ($script_dir):"
+        ls -la "$script_dir" || true
+        print_status "Contents of parent directory ($script_dir/..):"
+        ls -la "$script_dir/.." || true
+    fi
+    
     return 1
 }
 
@@ -219,13 +265,30 @@ build_type_mappings() {
     
     print_status "Searching for types in: $src_dir"
     
+    # Check if source directory actually contains C# files
+    if ! find "$src_dir" -name "*.cs" -type f | head -1 >/dev/null 2>&1; then
+        print_warning "No C# files found in source directory: $src_dir"
+        return 1
+    fi
+    
     local mappings=()
-    while IFS= read -r line; do
-        [[ -n "$line" ]] && mappings+=("$line")
-    done < <(discover_types "$src_dir")
+    local types_output
+    types_output=$(discover_types "$src_dir")
+    
+    if [[ -n "$types_output" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && mappings+=("$line")
+        done <<< "$types_output"
+    fi
     
     print_status "Found ${#mappings[@]} types"
-    printf '%s\n' "${mappings[@]}"
+    
+    if [[ ${#mappings[@]} -gt 0 ]]; then
+        printf '%s\n' "${mappings[@]}"
+    else
+        [[ "$VERBOSE" == true ]] && print_warning "No types discovered from source code"
+        return 1
+    fi
 }
 
 # Convert type links in a single markdown file
@@ -307,13 +370,24 @@ convert_type_links() {
     
     # Build dynamic type mappings from source code
     local mappings=()
-    while IFS= read -r line; do
-        [[ -n "$line" ]] && mappings+=("$line")
-    done < <(build_type_mappings "$SCRIPT_DIR")
+    local mappings_output
+    
+    # Temporarily disable exit on error for type discovery
+    set +e
+    mappings_output=$(build_type_mappings "$SCRIPT_DIR")
+    local discovery_result=$?
+    set -e
+    
+    if [[ $discovery_result -eq 0 && -n "$mappings_output" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && mappings+=("$line")
+        done <<< "$mappings_output"
+    fi
     
     if [[ ${#mappings[@]} -eq 0 ]]; then
-        print_error "No types found in source code. Check the source directory path."
-        exit 1
+        print_warning "No types found in source code - skipping type link conversion"
+        print_status "Documentation will still be generated, but without automatic type linking"
+        return 0
     fi
     
     print_status "Found ${#mappings[@]} types to process"

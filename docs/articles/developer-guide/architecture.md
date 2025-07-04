@@ -170,7 +170,7 @@ public class OperationAuthorizationRequirementFactory : IAuthorizationRequiremen
 2. The factory creates appropriate `IAuthorizationRequirement` instances
 3. ASP.NET Core's `IAuthorizationService.AuthorizeAsync()` evaluates requirements
 4. Authorization handlers (registered in DI) process the requirements
-5. Results are cached by `AuthorizationMetadataService` for performance
+5. Results are cached by [`AuthorizationMetadataService`](../../api/Htmx.Components.Services.AuthorizationMetadataService.html) for performance
 
 **Custom Authorization Handlers:**
 You can register custom authorization handlers that work with the requirements:
@@ -240,7 +240,7 @@ public class UserController : Controller
 **Authorization Evaluation Process:**
 1. **Metadata Extraction**: Parses `[Authorize]` and `[AllowAnonymous]` attributes from controllers and actions
 2. **Policy Evaluation**: Uses `IAuthorizationService.AuthorizeAsync()` to evaluate each policy requirement
-3. **Role Checking**: Delegates role validation to the configured `IRoleService` implementation
+3. **Role Checking**: Delegates role validation to the configured [`IRoleService`](../../api/Htmx.Components.Services.IRoleService.html) implementation
 4. **Result Caching**: Caches authorization decisions per user/policy combination to improve performance
 5. **Composition Logic**: Combines policy results (AND semantics) with role results (OR semantics)
 
@@ -253,7 +253,7 @@ This approach ensures that all authorization decisions flow through ASP.NET Core
 
 ### 7. JavaScript Architecture
 
-The framework includes a sophisticated JavaScript delivery system that enables server-side configuration and dynamic script inclusion through the `HtmxScriptsTagHelper`.
+The framework includes a sophisticated JavaScript delivery system that enables server-side configuration and dynamic script inclusion through the [`HtmxScriptsTagHelper`](../../api/Htmx.Components.TagHelpers.HtmxScriptsTagHelper.html).
 
 #### Key Components
 

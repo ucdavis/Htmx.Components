@@ -96,7 +96,7 @@ API documentation is automatically generated from XML comments in the C# source 
 To add new articles:
 1. Create markdown files in the `articles/` directory
 2. Update `articles/toc.yml` to include your new articles in the table of contents
-3. Reference C# types using backticks (e.g., `ModelHandler`) - they will be automatically converted to links
+3. Reference C# types using backticks (e.g., [`ModelHandler`](../../api/Htmx.Components.Models.ModelHandler.html)) - they will be automatically converted to links
 
 ### Type Link Conversion
 The system automatically converts type mentions in markdown files to API documentation links:

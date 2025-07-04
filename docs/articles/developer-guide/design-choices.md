@@ -45,7 +45,7 @@ Components/AuthStatus/
 
 ## Model Handler Pattern
 
-**Decision**: Use a centralized `ModelHandler<T, TKey>` abstraction for CRUD operations and table building.
+**Decision**: Use a centralized [`ModelHandler<T, TKey>`](../../api/Htmx.Components.Models.ModelHandler-2.html) abstraction for CRUD operations and table building.
 
 ```csharp
 [ModelConfig("users")]
