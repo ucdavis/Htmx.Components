@@ -5,6 +5,11 @@ using FastExpressionCompiler;
 
 namespace Htmx.Components.Utilities;
 
+/// <summary>
+/// Provides high-performance, cached invocation of generic methods using compiled expressions.
+/// This utility class optimizes the performance of generic method calls by caching compiled delegates,
+/// making it ideal for scenarios where the same generic methods are called repeatedly.
+/// </summary>
 public static class GenericMethodInvoker
 {
     private static readonly ConcurrentDictionary<string, Delegate> _delegateCache = new();
@@ -56,7 +61,15 @@ public static class GenericMethodInvoker
         });
     }
 
-    // Synchronous void or value-returning methods
+    /// <summary>
+    /// Invokes a generic method that returns void using cached compiled expressions for optimal performance.
+    /// The method is located by name and generic type parameters, then invoked with the provided arguments.
+    /// </summary>
+    /// <param name="instance">The object instance on which to invoke the method</param>
+    /// <param name="methodName">The name of the method to invoke</param>
+    /// <param name="genericTypes">Array of types for the generic type parameters</param>
+    /// <param name="parameters">Arguments to pass to the method</param>
+    /// <exception cref="InvalidOperationException">Thrown when the method is not found or delegate type is incompatible</exception>
     public static void InvokeVoid(
         object instance,
         string methodName,
@@ -72,6 +85,17 @@ public static class GenericMethodInvoker
             throw new InvalidOperationException("Delegate type not supported for void method.");
     }
 
+    /// <summary>
+    /// Invokes a generic method that returns a value using cached compiled expressions for optimal performance.
+    /// The method is located by name and generic type parameters, then invoked with the provided arguments.
+    /// </summary>
+    /// <typeparam name="TReturn">The expected return type of the method</typeparam>
+    /// <param name="instance">The object instance on which to invoke the method</param>
+    /// <param name="methodName">The name of the method to invoke</param>
+    /// <param name="genericTypes">Array of types for the generic type parameters</param>
+    /// <param name="parameters">Arguments to pass to the method</param>
+    /// <returns>The result of the method invocation cast to the specified return type</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the method is not found or delegate type is incompatible</exception>
     public static TReturn Invoke<TReturn>(
         object instance,
         string methodName,
@@ -86,7 +110,16 @@ public static class GenericMethodInvoker
         throw new InvalidOperationException("Delegate type not supported for value-returning method.");
     }
 
-    // Async Task-returning methods
+    /// <summary>
+    /// Asynchronously invokes a generic method that returns a Task using cached compiled expressions for optimal performance.
+    /// The method is located by name and generic type parameters, then invoked with the provided arguments.
+    /// </summary>
+    /// <param name="instance">The object instance on which to invoke the method</param>
+    /// <param name="methodName">The name of the method to invoke</param>
+    /// <param name="genericTypes">Array of types for the generic type parameters</param>
+    /// <param name="parameters">Arguments to pass to the method</param>
+    /// <returns>A task representing the asynchronous method execution</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the method is not found or does not return a Task</exception>
     public static async Task InvokeAsync(
         object instance,
         string methodName,
@@ -101,6 +134,16 @@ public static class GenericMethodInvoker
     }
 
     // Async Task<TResult>-returning methods
+    /// <summary>
+    /// Asynchronously invokes a generic method that returns a <see cref="Task{TResult}"/> with the specified parameters.
+    /// </summary>
+    /// <typeparam name="TResult">The type of the result returned by the task.</typeparam>
+    /// <param name="instance">The object instance on which to invoke the method.</param>
+    /// <param name="methodName">The name of the method to invoke.</param>
+    /// <param name="genericTypes">An array of types for generic parameters.</param>
+    /// <param name="parameters">The parameters to pass to the method.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the result of the method invocation.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the method does not return a <see cref="Task{TResult}"/>.</exception>
     public static async Task<TResult> InvokeAsync<TResult>(
         object instance,
         string methodName,

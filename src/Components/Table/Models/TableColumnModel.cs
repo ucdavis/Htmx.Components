@@ -7,28 +7,106 @@ using Htmx.Components.Models;
 namespace Htmx.Components.Table.Models;
 
 // We have a non-generic interface, since razor views don't support generic type params
+/// <summary>
+/// Represents a column in a table model with configuration for display, filtering, and editing capabilities.
+/// </summary>
 public interface ITableColumnModel
 {
+    /// <summary>
+    /// Gets or sets the display header text for the column.
+    /// </summary>
     string Header { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the data property name that this column represents.
+    /// </summary>
     string DataName { get; set; }
+    
+    /// <summary>
+    /// Gets the unique identifier for this column.
+    /// </summary>
     string Id { get; }
+    
+    /// <summary>
+    /// Gets or sets whether this column can be sorted.
+    /// </summary>
     bool Sortable { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether this column can be filtered.
+    /// </summary>
     bool Filterable { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether this column can be edited inline.
+    /// </summary>
     bool IsEditable { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the type of column (value selector or display).
+    /// </summary>
     ColumnType ColumnType { get; set; }
-    string? CellPartialView { get; set; } // Custom rendering for cell
-    string? FilterPartialView { get; set; } // Custom rendering for filter
+    
+    /// <summary>
+    /// Gets or sets the custom partial view for rendering the cell content.
+    /// </summary>
+    string? CellPartialView { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the custom partial view for rendering the filter control.
+    /// </summary>
+    string? FilterPartialView { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the custom partial view for rendering the cell in edit mode.
+    /// </summary>
     public string? CellEditPartialView { get; set; }
+    
+    /// <summary>
+    /// Gets the available actions for a specific row in this column.
+    /// </summary>
+    /// <param name="rowContext">The context of the row to get actions for.</param>
+    /// <returns>A collection of action models for the row.</returns>
     Task<IEnumerable<ActionModel>> GetActionsAsync(ITableRowContext rowContext);
-    object GetValue(ITableRowContext rowContext);  // Extracts value dynamically
+    
+    /// <summary>
+    /// Extracts the value for this column from the given row context.
+    /// </summary>
+    /// <param name="rowContext">The row context to extract the value from.</param>
+    /// <returns>The column value for the specified row.</returns>
+    object GetValue(ITableRowContext rowContext);
+    
+    /// <summary>
+    /// Gets the serialized string representation of the column value for the given row.
+    /// </summary>
+    /// <param name="rowContext">The row context to get the serialized value from.</param>
+    /// <returns>The serialized column value.</returns>
     string GetSerializedValue(ITableRowContext rowContext);
-    ITableModel Table { get; set; } // Reference to the parent table
+    
+    /// <summary>
+    /// Gets or sets the reference to the parent table model.
+    /// </summary>
+    ITableModel Table { get; set; }
+    
+    /// <summary>
+    /// Gets the function that creates an input model for editing this column.
+    /// </summary>
     Func<ITableRowContext, Task<IInputModel>> GetInputModel { get; }
 }
 
+/// <summary>
+/// Specifies the type of table column.
+/// </summary>
 public enum ColumnType
 {
+    /// <summary>
+    /// A column that displays data using a property selector expression.
+    /// </summary>
     ValueSelector,
+    
+    /// <summary>
+    /// A column that displays data using custom display logic.
+    /// </summary>
     Display
 }
 
@@ -47,6 +125,11 @@ internal class TableCellPartialModel
     public required ITableColumnModel Column { get; init; }
 }
 
+/// <summary>
+/// Represents a table column model that provides configuration and behavior for displaying and editing entity data in a table.
+/// </summary>
+/// <typeparam name="T">The entity type that this column operates on.</typeparam>
+/// <typeparam name="TKey">The key type for the entity.</typeparam>
 public class TableColumnModel<T, TKey> : ITableColumnModel where T : class
 {
     internal TableColumnModel(TableColumnModelConfig<T, TKey> config)
@@ -69,11 +152,17 @@ public class TableColumnModel<T, TKey> : ITableColumnModel where T : class
         ModelHandler = config.DataOptions.ModelHandler!;
     }
 
+    /// <summary>
+    /// Gets or sets the model handler responsible for data operations on the entity type.
+    /// </summary>
     public ModelHandler<T, TKey> ModelHandler { get; set; } = default!;
 
     private Expression<Func<T, object>> _selectorExpression = x => x!;
 
-    // used for referencing a member of T when working with IQueryable<T>
+    /// <summary>
+    /// Gets or sets the expression used to select the property value for this column.
+    /// Used for referencing a member of T when working with IQueryable&lt;T&gt;.
+    /// </summary>
     public Expression<Func<T, object>> SelectorExpression
     {
         get => _selectorExpression;
@@ -86,32 +175,78 @@ public class TableColumnModel<T, TKey> : ITableColumnModel where T : class
         }
     }
 
-    // used for actually pulling values from instance of T when rendering cells
+    /// <summary>
+    /// Gets or sets the compiled function used to extract values from instances of T when rendering cells.
+    /// </summary>
     public Func<T, object> SelectorFunc { get; set; } = x => x!;
+    
+    /// <summary>
+    /// Gets or sets the display header text for the column.
+    /// </summary>
     public string Header { get; set; } = "";
+    
+    /// <summary>
+    /// Gets or sets the data property name that this column represents.
+    /// </summary>
     public string DataName { get; set; } = "";
+    
+    /// <summary>
+    /// Gets the unique identifier for this column.
+    /// </summary>
     public string Id => "col_" + DataName.SanitizeForHtmlId();
+    
+    /// <summary>
+    /// Gets or sets whether this column can be sorted.
+    /// </summary>
     public bool Sortable { get; set; } = true;
+    
+    /// <summary>
+    /// Gets or sets whether this column can be filtered.
+    /// </summary>
     public bool Filterable { get; set; } = true;
+    
+    /// <summary>
+    /// Gets or sets whether this column can be edited inline.
+    /// </summary>
     public bool IsEditable { get; set; } = false;
+    
+    /// <summary>
+    /// Gets or sets the type of column (value selector or display).
+    /// </summary>
     public ColumnType ColumnType { get; set; }
-    public string? CellPartialView { get; set; } // Custom rendering for cell
-    public string? FilterPartialView { get; set; } // Custom rendering for filter
+    
+    /// <summary>
+    /// Gets or sets the custom partial view for rendering the cell content.
+    /// </summary>
+    public string? CellPartialView { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the custom partial view for rendering the filter control.
+    /// </summary>
+    public string? FilterPartialView { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the custom partial view for rendering the cell in edit mode.
+    /// </summary>
     public string? CellEditPartialView { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the reference to the parent table model.
+    /// </summary>
     public ITableModel Table { get; set; } = default!;
 
     /// <summary>
-    /// A delegate that extends filtering of a <see cref="IQueryable<typeparamref name="T"/>"/>   using a single value comparison
+    /// Gets or sets a delegate that extends filtering of a <see cref="IQueryable{T}"/> using a single value comparison.
     /// </summary>
     public Func<IQueryable<T>, string, IQueryable<T>>? Filter { get; set; }
 
     /// <summary>
-    /// A delegate that extends filtering of a <see cref="IQueryable<typeparamref name="T"/>"/>  using a two value range comparison
+    /// Gets or sets a delegate that extends filtering of a <see cref="IQueryable{T}"/> using a two value range comparison.
     /// </summary>
     public Func<IQueryable<T>, string, string, IQueryable<T>>? RangeFilter { get; set; }
 
     /// <summary>
-    /// A delegate that generates one or more <see cref="ActionModel"/>s that can be mapped to buttons in a view
+    /// Gets or sets a collection of factory functions that generate action models for table rows.
     /// </summary>
     public List<Func<TableRowContext<T, TKey>, Task<IEnumerable<ActionModel>>>> ActionsFactories { get; set; } = [];
 
@@ -127,6 +262,11 @@ public class TableColumnModel<T, TKey> : ITableColumnModel where T : class
         return await GetInputModel(typedRowContext);
     };
 
+    /// <summary>
+    /// Gets the available actions for a specific row in this column.
+    /// </summary>
+    /// <param name="rowContext">The context of the row to get actions for.</param>
+    /// <returns>A collection of action models for the row.</returns>
     public async Task<IEnumerable<ActionModel>> GetActionsAsync(ITableRowContext rowContext)
     {
         if (rowContext.Item is T typedItem)
@@ -145,7 +285,11 @@ public class TableColumnModel<T, TKey> : ITableColumnModel where T : class
         return [];
     }
 
-    // Implement the interface method for non-generic use
+    /// <summary>
+    /// Extracts the value for this column from the given row context.
+    /// </summary>
+    /// <param name="rowContext">The row context to extract the value from.</param>
+    /// <returns>The column value for the specified row.</returns>
     public object GetValue(ITableRowContext rowContext)
     {
         if (rowContext.Item is T typedItem)
@@ -155,6 +299,11 @@ public class TableColumnModel<T, TKey> : ITableColumnModel where T : class
         return "";
     }
 
+    /// <summary>
+    /// Gets the serialized string representation of the column value for the given row.
+    /// </summary>
+    /// <param name="rowContext">The row context to get the serialized value from.</param>
+    /// <returns>The serialized column value.</returns>
     public string GetSerializedValue(ITableRowContext rowContext)
     {
         if (rowContext.Item is T typedItem)

@@ -10,6 +10,13 @@ namespace Htmx.Components.Controllers;
 
 public partial class FormController
 {
+    /// <summary>
+    /// Sets the current page number for table pagination and refreshes the table view.
+    /// This action updates the pagination state and displays the requested page of data.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being paginated</param>
+    /// <param name="page">The page number to navigate to (1-based)</param>
+    /// <returns>An action result containing the updated table view for the specified page</returns>
     [HttpPost("{typeId}/SetPage")]
     [TableRefreshAction]
     public async Task<IActionResult> SetPage(string typeId, int page)
@@ -41,6 +48,13 @@ public partial class FormController
         return Ok(tableModel);
     }
 
+    /// <summary>
+    /// Sets the number of items displayed per page in the table and refreshes the view.
+    /// This action updates the page size preference and reloads the table with the new layout.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being displayed</param>
+    /// <param name="pageSize">The number of items to display per page</param>
+    /// <returns>An action result containing the updated table view with the new page size</returns>
     [HttpPost("{typeId}/SetPageSize")]
     [TableRefreshAction]
     public async Task<IActionResult> SetPageSize(string typeId, int pageSize)
@@ -72,6 +86,14 @@ public partial class FormController
         return Ok(tableModel);
     }
 
+    /// <summary>
+    /// Sets the sorting configuration for a table column and refreshes the table view.
+    /// This action applies sorting by the specified column and direction to the displayed data.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being sorted</param>
+    /// <param name="column">The name of the column to sort by</param>
+    /// <param name="direction">The sort direction ("asc" for ascending, "desc" for descending)</param>
+    /// <returns>An action result containing the updated table view with sorted data</returns>
     [HttpPost("{typeId}/SetSort")]
     [TableRefreshAction]
     public async Task<IActionResult> SetSort(string typeId, string column, string direction)
@@ -104,6 +126,15 @@ public partial class FormController
         return Ok(tableModel);
     }
 
+    /// <summary>
+    /// Applies a filter to a specific table column and refreshes the table view.
+    /// This action filters the displayed data based on the provided filter criteria for the specified column.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being filtered</param>
+    /// <param name="column">The name of the column to filter</param>
+    /// <param name="filter">The filter value or criteria to apply</param>
+    /// <param name="input">An input parameter that may specify filter type or additional context</param>
+    /// <returns>An action result containing the updated table view with filtered data</returns>
     [HttpPost("{typeId}/SetFilter")]
     [TableRefreshAction]
     public async Task<IActionResult> SetFilter(string typeId, string column, string filter, int input)

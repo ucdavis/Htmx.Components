@@ -13,12 +13,24 @@ public class ComponentViewLocationExpander : IViewLocationExpander
 {
     private static readonly Lazy<HashSet<string>> _componentNames = new(ScanForViewComponents);
 
+    /// <summary>
+    /// Populates the context values used by this view location expander.
+    /// This method is called during view resolution to identify this expander's contribution.
+    /// </summary>
+    /// <param name="context">The context containing information about the current view location expansion</param>
     public void PopulateValues(ViewLocationExpanderContext context)
     {
         // Add a key to identify this expander
         context.Values["ComponentExpander"] = "true";
     }
 
+    /// <summary>
+    /// Expands the list of view locations to include component-specific folders.
+    /// This enables views to be co-located with their ViewComponent classes in organized folder structures.
+    /// </summary>
+    /// <param name="context">The context containing information about the current view location expansion</param>
+    /// <param name="viewLocations">The existing collection of view locations to search</param>
+    /// <returns>An expanded collection of view locations that includes component-specific paths</returns>
     public IEnumerable<string> ExpandViewLocations(ViewLocationExpanderContext context, IEnumerable<string> viewLocations)
     {
         var locations = viewLocations.ToList();

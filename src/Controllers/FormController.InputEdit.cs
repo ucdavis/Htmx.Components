@@ -13,6 +13,14 @@ namespace Htmx.Components.Controllers;
 
 public partial class FormController
 {
+    /// <summary>
+    /// Initiates editing mode for a specific record, loading the item into an editable form.
+    /// This action prepares the UI for editing an existing record identified by the provided key.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being edited</param>
+    /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <param name="key">The unique key identifying the record to edit</param>
+    /// <returns>An action result containing the edit form UI</returns>
     [HttpPost("{typeId}/{modelUI}/Edit")]
     [TableEditAction]
     public async Task<IActionResult> Edit(string typeId, ModelUI modelUI, string key)
@@ -60,6 +68,15 @@ public partial class FormController
         return Ok(tableModel);
     }
 
+    /// <summary>
+    /// Sets the value of a specific property on the item currently being edited.
+    /// This action updates a single field value during the editing process.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being edited</param>
+    /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <param name="propertyName">The name of the property to update</param>
+    /// <param name="value">The new string value to set for the property</param>
+    /// <returns>An action result indicating success or failure of the value update</returns>
     [HttpPost("{typeId}/{modelUI}/SetValue")]
     public async Task<IActionResult> SetValue(string typeId, ModelUI modelUI, string propertyName, string value)
     {
@@ -112,6 +129,15 @@ public partial class FormController
         return new MultiSwapViewResult();
     }
 
+    /// <summary>
+    /// Handles value change events for input fields during editing.
+    /// This action is triggered when a field value changes and may update related UI elements.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being edited</param>
+    /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <param name="propertyName">The name of the property that changed</param>
+    /// <param name="value">The new string value of the property</param>
+    /// <returns>An action result that may include UI updates based on the value change</returns>
     [HttpPost("{typeId}/{modelUI}/ValueChanged")]
     public async Task<IActionResult> ValueChanged(string typeId, ModelUI modelUI, string propertyName, string value)
     {

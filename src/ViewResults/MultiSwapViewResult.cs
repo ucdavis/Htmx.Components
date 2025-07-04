@@ -22,12 +22,23 @@ public class MultiSwapViewResult : IActionResult
     private readonly List<HtmxViewInfo> _oobs = new();
 
     // holds original model in case it's needed for further processing such as in result filters
+    /// <summary>
+    /// Gets or sets the original model that may be needed for further processing such as in result filters.
+    /// </summary>
     [JsonIgnore]
     public object? Model { get; set; }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MultiSwapViewResult"/> class.
+    /// </summary>
     public MultiSwapViewResult()
     { }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MultiSwapViewResult"/> class with optional main content and out-of-band views.
+    /// </summary>
+    /// <param name="main">A tuple containing the partial view name and model for the main content, or null if no main content.</param>
+    /// <param name="oobs">An array of out-of-band view information objects.</param>
     protected MultiSwapViewResult(
         (string PartialView, object Model)? main = null,
         params HtmxViewInfo[] oobs)
@@ -43,6 +54,12 @@ public class MultiSwapViewResult : IActionResult
         _oobs.AddRange(oobs);
     }
 
+    /// <summary>
+    /// Sets the main content for the response using the specified view name and model.
+    /// </summary>
+    /// <param name="viewName">The name of the view to render as main content.</param>
+    /// <param name="model">The model to pass to the view.</param>
+    /// <returns>The current <see cref="MultiSwapViewResult"/> instance for method chaining.</returns>
     public MultiSwapViewResult WithMainContent(string viewName, object model)
     {
         _main = new HtmxViewInfo
@@ -54,6 +71,14 @@ public class MultiSwapViewResult : IActionResult
         return this;
     }
 
+    /// <summary>
+    /// Adds out-of-band content to the response with specified targeting options.
+    /// </summary>
+    /// <param name="viewName">The name of the view to render as out-of-band content.</param>
+    /// <param name="model">The model to pass to the view.</param>
+    /// <param name="targetDisposition">The disposition that determines how the content should be swapped (default is OuterHtml).</param>
+    /// <param name="targetSelector">An optional CSS selector to target a specific element for the swap.</param>
+    /// <returns>The current <see cref="MultiSwapViewResult"/> instance for method chaining.</returns>
     public MultiSwapViewResult WithOobContent(string viewName, object model, 
         OobTargetDisposition targetDisposition = OobTargetDisposition.OuterHtml, string? targetSelector = null)
     {
@@ -67,6 +92,12 @@ public class MultiSwapViewResult : IActionResult
         return this;
     }
 
+    /// <summary>
+    /// Adds out-of-band content to the response, automatically determining targeting options from the model if it implements <see cref="IOobTargetable"/>.
+    /// </summary>
+    /// <param name="viewName">The name of the view to render as out-of-band content.</param>
+    /// <param name="model">The model to pass to the view. If the model implements <see cref="IOobTargetable"/>, its targeting properties will be used.</param>
+    /// <returns>The current <see cref="MultiSwapViewResult"/> instance for method chaining.</returns>
     public MultiSwapViewResult WithOobContent(string viewName, object model)
     {
         _oobs.Add(new HtmxViewInfo
@@ -84,18 +115,33 @@ public class MultiSwapViewResult : IActionResult
     }
 
 
+    /// <summary>
+    /// Adds multiple out-of-band content items to the response.
+    /// </summary>
+    /// <param name="oobList">A collection of <see cref="HtmxViewInfo"/> objects representing the out-of-band content to add.</param>
+    /// <returns>The current <see cref="MultiSwapViewResult"/> instance for method chaining.</returns>
     public MultiSwapViewResult WithOobContent(IEnumerable<HtmxViewInfo> oobList)
     {
         _oobs.AddRange(oobList);
         return this;
     }
 
+    /// <summary>
+    /// Adds a single out-of-band content item to the response.
+    /// </summary>
+    /// <param name="oob">The <see cref="HtmxViewInfo"/> object representing the out-of-band content to add.</param>
+    /// <returns>The current <see cref="MultiSwapViewResult"/> instance for method chaining.</returns>
     public MultiSwapViewResult WithOobContent(HtmxViewInfo oob)
     {
         _oobs.Add(oob);
         return this;
     }
 
+    /// <summary>
+    /// Executes the result operation, rendering all main and out-of-band views into the HTTP response.
+    /// </summary>
+    /// <param name="context">The action context in which the result is executed.</param>
+    /// <returns>A task that represents the asynchronous execution operation.</returns>
     public async Task ExecuteResultAsync(ActionContext context)
     {
         var response = context.HttpContext.Response;

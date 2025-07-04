@@ -10,6 +10,12 @@ using static Htmx.Components.Authorization.AuthConstants;
 
 namespace Htmx.Components.Models.Builders;
 
+/// <summary>
+/// Provides a fluent API for configuring and building model handlers that manage CRUD operations and UI generation.
+/// This builder configures data access, business logic delegates, table presentation, and input models for a specific entity type.
+/// </summary>
+/// <typeparam name="T">The model type being handled, must be a reference type with a parameterless constructor</typeparam>
+/// <typeparam name="TKey">The type of the model's primary key</typeparam>
 public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, TKey>, ModelHandler<T, TKey>>
     where T : class, new()
 {
@@ -29,18 +35,37 @@ public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, T
         _pageState = serviceProvider.GetRequiredService<IPageState>();
     }
 
+    /// <summary>
+    /// Sets the unique type identifier for this model handler.
+    /// This identifier is used for routing, authorization, and UI component registration.
+    /// </summary>
+    /// <param name="typeId">A unique string identifier for the model type</param>
+    /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithTypeId(string typeId)
     {
         _options.TypeId = typeId;
         return this;
     }
 
+    /// <summary>
+    /// Configures the key selector expression that identifies the primary key property or properties of the model.
+    /// This expression is used for entity identification, filtering, and CRUD operations.
+    /// </summary>
+    /// <param name="keySelector">An expression that selects the primary key from the model</param>
+    /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithKeySelector(Expression<Func<T, TKey>> keySelector)
     {
         _options.KeySelector = keySelector;
         return this;
     }
 
+    /// <summary>
+    /// Configures the queryable data source for read operations.
+    /// This delegate provides the base query for retrieving entities and enables read CRUD functionality.
+    /// Also registers the read operation with the authorization system.
+    /// </summary>
+    /// <param name="getQueryable">A function that returns the queryable data source for the model</param>
+    /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithQueryable(Func<IQueryable<T>> getQueryable)
     {
         _options.Crud.CrudFeatures |= CrudFeatures.Read;
@@ -49,6 +74,13 @@ public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, T
         return this;
     }
 
+    /// <summary>
+    /// Configures the create operation for adding new entities.
+    /// This enables create CRUD functionality and sets up the associated action models for UI generation.
+    /// Also registers the create operation with the authorization system.
+    /// </summary>
+    /// <param name="createModel">A function that creates a new entity and returns the result</param>
+    /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithCreate(Func<T, Task<Result<T>>> createModel)
     {
         _options.Crud.CrudFeatures |= CrudFeatures.Create;
@@ -67,6 +99,13 @@ public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, T
         return this;
     }
 
+    /// <summary>
+    /// Configures the update operation for modifying existing entities.
+    /// This enables update CRUD functionality and sets up the associated action models for UI generation.
+    /// Also registers the update operation with the authorization system.
+    /// </summary>
+    /// <param name="updateModel">A function that updates an existing entity and returns the result</param>
+    /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithUpdate(Func<T, Task<Result<T>>> updateModel)
     {
         _options.Crud.CrudFeatures |= CrudFeatures.Update;
@@ -100,6 +139,13 @@ public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, T
         });
     }
 
+    /// <summary>
+    /// Configures the delete operation for removing entities.
+    /// This enables delete CRUD functionality and sets up the associated action models for UI generation.
+    /// Also registers the delete operation with the authorization system.
+    /// </summary>
+    /// <param name="deleteModel">A function that deletes an entity by its key and returns the result</param>
+    /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithDelete(Func<TKey, Task<Result>> deleteModel)
     {
         _options.Crud.CrudFeatures |= CrudFeatures.Delete;
@@ -117,12 +163,26 @@ public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, T
         return this;
     }
 
+    /// <summary>
+    /// Configures the table model builder that defines how the entities are displayed in tabular format.
+    /// This allows customization of columns, actions, filtering, and other table-specific settings.
+    /// </summary>
+    /// <param name="configure">An action that configures the table model builder</param>
+    /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithTable(Action<TableModelBuilder<T, TKey>> configure)
     {
         _options.Table.ConfigureTableModel = configure;
         return this;
     }
 
+    /// <summary>
+    /// Configures an input model for a specific property of the entity.
+    /// Input models define how properties are edited in forms, including validation, UI controls, and behavior.
+    /// </summary>
+    /// <typeparam name="TProp">The type of the property being configured</typeparam>
+    /// <param name="propertySelector">An expression that selects the property to configure</param>
+    /// <param name="configure">An action that configures the input model builder for the property</param>
+    /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithInput<TProp>(Expression<Func<T, TProp>> propertySelector,
         Action<InputModelBuilder<T, TProp>> configure)
     {
@@ -137,6 +197,11 @@ public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, T
         return this;
     }
 
+    /// <summary>
+    /// Builds the configured model handler instance.
+    /// This method is called internally by the builder framework to create the final model handler.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous build operation. The task result contains the configured model handler.</returns>
     protected override Task<ModelHandler<T, TKey>> BuildImpl()
     {
         var handler = new ModelHandler<T, TKey>(_options, _tableProvider, _pageState);

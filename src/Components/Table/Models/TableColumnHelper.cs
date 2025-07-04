@@ -208,44 +208,13 @@ public static class TableColumnHelper
     }
 
     /// <summary>
-    /// Applies a filter string to the queryable using column metadata from the table model.
+    /// Gets the column name from a table model based on the operand reference.
     /// </summary>
     /// <typeparam name="T">The entity type being filtered.</typeparam>
     /// <typeparam name="TKey">The key type for the entity.</typeparam>
-    /// <param name="query">The queryable to apply the filter to.</param>
-    /// <param name="filter">The filter expression string.</param>
-    /// <param name="column">The column model containing metadata for filtering.</param>
-    /// <returns>A filtered queryable with the specified filter applied.</returns>
-    /// <remarks>
-    /// <para>
-    /// Filter syntax: [Operator] [Operand1], [Operand2]
-    /// </para>
-    /// <para>
-    /// Supported operators:
-    /// - Comparison: =, ==, !=, &lt;, &gt;, &lt;=, &gt;=
-    /// - String operations: contains, startswith, endswith
-    /// - Null checks: isnull, isnotnull, isnullorempty, isnotnullorempty
-    /// - Range: between [value1], [value2]
-    /// </para>
-    /// <para>
-    /// Operands can be:
-    /// - Quoted strings: "some value"
-    /// - Unquoted values: 123, true, 2023-01-01
-    /// - Column references: [Other Column Name]
-    /// </para>
-    /// </remarks>
-    /// <example>
-    /// <code>
-    /// // Filter for names containing "John"
-    /// var filtered = TableColumnHelper.Filter(query, "contains John", nameColumn);
-    /// 
-    /// // Filter for ages between 18 and 65
-    /// var filtered = TableColumnHelper.Filter(query, "between 18, 65", ageColumn);
-    /// 
-    /// // Filter for dates after a specific date
-    /// var filtered = TableColumnHelper.Filter(query, "> 2023-01-01", dateColumn);
-    /// </code>
-    /// </example>
+    /// <param name="tableModel">The table model containing column metadata.</param>
+    /// <param name="operand">The operand reference to resolve to a column name.</param>
+    /// <returns>The resolved column name.</returns>
     private static string GetColName<T, TKey>(TableModel<T, TKey> tableModel, string operand) where T : class
     {
         var header = operand.Trim('[', ']');
@@ -345,11 +314,11 @@ public static class TableColumnHelper
     }
 
     /// <summary>
-    /// Determines if an operand refers to another column in the table.
+    /// Parses a string value to the specified type.
     /// </summary>
-    /// <param name="operand">The operand to check.</param>
-    /// <param name="tableModel">The table model to search for column references.</param>
-    /// <returns>true if the operand is a valid column reference; otherwise, false.</returns>
+    /// <param name="value">The string value to parse.</param>
+    /// <param name="type">The target type to parse to.</param>
+    /// <returns>The parsed value, or null if parsing fails.</returns>
     private static object? ParseValue(string value, Type type)
     {
         if (type == typeof(string))

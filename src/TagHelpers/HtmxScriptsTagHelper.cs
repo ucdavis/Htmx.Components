@@ -35,6 +35,11 @@ public class HtmxScriptsTagHelper : TagHelper
     [HtmlAttributeNotBound]
     public ViewContext ViewContext { get; set; } = null!;
 
+    /// <summary>
+    /// Initializes a new instance of the HtmxScriptsTagHelper with the required dependencies.
+    /// </summary>
+    /// <param name="htmlHelper">The HTML helper for rendering HTML content</param>
+    /// <param name="environment">The web hosting environment for accessing application information</param>
     public HtmxScriptsTagHelper(IHtmlHelper htmlHelper, IWebHostEnvironment environment)
     {
         _htmlHelper = htmlHelper;

@@ -4,7 +4,7 @@ namespace Htmx.Components.AuthStatus;
 
 /// <summary>
 /// Marks action methods that should trigger an update of the authentication status component
-/// when executed via HTMX requests. This attribute is used by the <see cref="Filters.AuthStatusUpdateFilter"/>
+/// when executed via HTMX requests. This attribute is used by the <see cref="Internal.AuthStatusUpdateFilter"/>
 /// to automatically inject updated authentication status into out-of-band responses.
 /// </summary>
 /// <remarks>

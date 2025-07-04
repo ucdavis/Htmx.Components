@@ -12,6 +12,13 @@ namespace Htmx.Components.Controllers;
 
 public partial class FormController
 {
+    /// <summary>
+    /// Saves the currently edited item, either creating a new record or updating an existing one.
+    /// This action commits changes made during the editing process to the data store.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being saved</param>
+    /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <returns>An action result containing the updated table view or error information</returns>
     [HttpPost("{typeId}/{modelUI}/Save")]
     [TableEditAction]
     public async Task<IActionResult> Save(string typeId, ModelUI modelUI)
@@ -90,6 +97,13 @@ public partial class FormController
         return Ok(tableModel);
     }
 
+    /// <summary>
+    /// Cancels the current editing operation and reverts to the display state.
+    /// This action discards any unsaved changes and returns the item to read-only mode.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being edited</param>
+    /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <returns>An action result containing the updated table view without the editing UI</returns>
     [HttpPost("{typeId}/{modelUI}/CancelEdit")]
     [TableEditAction]
     public async Task<IActionResult> CancelEdit(string typeId, ModelUI modelUI)
@@ -149,6 +163,13 @@ public partial class FormController
         return Ok(tableModel);
     }
 
+    /// <summary>
+    /// Initiates the creation of a new record by setting up an empty editing form.
+    /// This action prepares the UI for creating a new item of the specified model type.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type to create</param>
+    /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <returns>An action result containing the creation form UI</returns>
     [HttpPost("{typeId}/{modelUI}/Create")]
     [TableEditAction]
     public async Task<IActionResult> Create(string typeId, ModelUI modelUI)
@@ -191,6 +212,14 @@ public partial class FormController
         return Ok(tableModel);
     }
 
+    /// <summary>
+    /// Deletes the specified record from the data store.
+    /// This action permanently removes the item identified by the provided key.
+    /// </summary>
+    /// <param name="typeId">The identifier of the model type being deleted</param>
+    /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <param name="key">The unique key identifying the record to delete</param>
+    /// <returns>An action result indicating success or failure of the deletion operation</returns>
     [HttpPost("{typeId}/{modelUI}/Delete")]
     [TableEditAction]
     public async Task<IActionResult> Delete(string typeId, ModelUI modelUI, string key)
