@@ -5,7 +5,7 @@ This directory contains the documentation generation system for Htmx.Components.
 ## Documentation URL
 
 The documentation is automatically published to GitHub Pages at:
-**https://sweber.github.io/Htmx.Components/**
+**https://ucdavis.github.io/Htmx.Components/**
 
 ## How It Works
 

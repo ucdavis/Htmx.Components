@@ -14,22 +14,23 @@ A powerful .NET library that provides server-side components for building dynami
 
 ## Quick Start
 
+Get up and running quickly with the essentials:
+
+```bash
+dotnet add package Htmx.Components
+```
+
 ```csharp
-// Program.cs
-builder.Services.AddHtmxComponents(options =>
-{
-    options.WithAuthorizationRequirementFactory<MyPermissionFactory>();
-    options.WithResourceOperationRegistry<MyResourceRegistry>();
-});
+// Minimal setup in Program.cs
+builder.Services.AddHtmxComponents();
+builder.Services.AddMvc().AddHtmxComponentsApplicationPart();
 
-builder.Services.AddMvc()
-    .AddHtmxComponentsApplicationPart();
-
-// Configure the pipeline
 app.UseHtmxPageState();
 app.UseAuthentication();
 app.UseAuthorization();
 ```
+
+**📖 [Complete Setup Guide →](articles/getting-started.md)**
 
 ## What's Inside
 

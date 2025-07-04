@@ -1,5 +1,7 @@
 # Component Architecture and Self-Contained Structure
 
+This guide covers the technical details of the component architecture in Htmx.Components. For setup and basic usage, see the **[Getting Started Guide](../getting-started.md)** and **[User Guide](../user-guide/basic-usage.md)**.
+
 Htmx.Components uses a self-contained component architecture where each ViewComponent keeps all its related files co-located for better maintainability and discoverability.
 
 ## Self-Contained Component Structure

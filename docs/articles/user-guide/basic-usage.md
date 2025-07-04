@@ -1,107 +1,15 @@
-# Quick Start Guide
+# Basic Usage Patterns
 
-This guide will get you up and running with Htmx.Components in your ASP.NET Core application quickly.
+This guide covers common usage patterns for Htmx.Components. For installation and initial setup, see the **[Getting Started Guide](../getting-started.md)**.
 
-## Installation
+## Prerequisites
 
-Add the Htmx.Components package to your ASP.NET Core project:
+- Htmx.Components installed and configured (see [Getting Started](../getting-started.md))
+- Basic understanding of ASP.NET Core MVC and HTMX
 
-```bash
-dotnet add package Htmx.Components
-```
+## Layout Integration
 
-## 1. Configure Services in Program.cs
-
-Register the Htmx.Components services and configure your application:
-
-```csharp
-using Htmx.Components;
-using Htmx.Components.Configuration;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Add Htmx.Components services
-builder.Services.AddHtmxComponents(htmxOptions =>
-{
-    // Register model handlers from attributes
-    htmxOptions.WithModelHandlerRegistry((registry, serviceProvider) =>
-    {
-        ModelHandlerAttributeRegistrar.RegisterAll(registry);
-    });
-    
-    // Optional: Configure authorization and user claims
-    // htmxOptions.WithAuthorizationRequirementFactory<YourRequirementFactory>();
-    // htmxOptions.WithUserIdClaimType("your-claim-type");
-});
-
-// Add controllers with views and include Htmx.Components views
-builder.Services.AddControllersWithViews()
-    .AddHtmxComponentsApplicationPart();
-
-var app = builder.Build();
-
-// Add Htmx.Components middleware
-app.UseHtmxPageState();
-app.UseRouting();
-
-// Your other middleware...
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller}/{action}/{id?}",
-    defaults: new { controller = "Home", action = "Index" });
-
-app.Run();
-```
-
-## 2. Set Up Your Layout (_Layout.cshtml)
-
-Configure your layout file to include HTMX and Htmx.Components assets:
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- HTMX configuration -->
-    <meta name="htmx-config" historyCacheSize="20" indicatorClass="htmx-indicator" includeAspNetAntiforgeryToken="true" />
-    <title>Your App</title>
-    
-    <!-- Your CSS -->
-    <link rel="stylesheet" href="./css/site.css">
-    <!-- Htmx.Components CSS -->
-    <link rel="stylesheet" href="~/_content/Htmx.Components/css/table-overrides.css">
-    
-    <!-- HTMX library -->
-    <script src="./js/htmx.min.js"></script>
-</head>
-<body>
-    <header>
-        <nav>
-            <!-- Navigation bar component -->
-            @await Component.InvokeAsync("NavBar")
-            <!-- Authentication status component -->
-            @await Component.InvokeAsync("AuthStatus")
-        </nav>
-    </header>
-    
-    <main id="tab-content">
-        @RenderBody()
-    </main>
-    
-    <!-- Htmx.Components JavaScript Behaviors -->
-    <htmx-scripts></htmx-scripts>
-    
-    <!-- Required for antiforgery token support -->
-    @Html.HtmxAntiforgeryScript()
-    <!-- Page state management -->
-    <htmx-page-state></htmx-page-state>
-</body>
-</html>
-```
+For setup instructions, see the **[Getting Started Guide](../getting-started.md)**. This section covers usage patterns.
 
 ### JavaScript Behaviors
 
@@ -168,39 +76,31 @@ Create a `Tools` directory in your project root with the following files:
 
 ### Configure MSBuild Integration
 
-Add the following to your `.csproj` file to automatically build Tailwind CSS during compilation:
+Add the following to your `.csproj` file to automatically build Tailwind CSS during compilation.
 
 ```xml
-<!-- Tailwind CSS Build Configuration -->
-<PropertyGroup>
-  <TailwindOutputFile>wwwroot/css/site.css</TailwindOutputFile>
-  <!-- Use project reference if Htmx.Components project exists -->
-  <HtmxProjectDir>../Htmx.Components</HtmxProjectDir>
-  <HtmxViews Condition="Exists('$(HtmxProjectDir)')">$(HtmxProjectDir)</HtmxViews>
-  <ExtractedCssClassesFile>$(HtmxProjectDir)/content/extracted-css-classes.txt</ExtractedCssClassesFile>
-</PropertyGroup>
+  <!-- Tailwind CSS Build -->
+  <PropertyGroup>
+    <TailwindOutputFile>wwwroot/css/site.css</TailwindOutputFile>
+    <TailwindInputFile>Tools/input.css</TailwindInputFile>
+  </PropertyGroup>
+  <Target Name="BuildTailwind" AfterTargets="ResolveProjectReferences" Inputs="$(TailwindInputFile)" Outputs="$(TailwindOutputFile)">
+    <Exec Command="cd $(ProjectDir)Tools &amp;&amp; npm run build:css" />
+    <Touch Files="$(TailwindOutputFile)" AlwaysCreate="true" />
+  </Target>
+```
 
-<ItemGroup>
-  <TailwindSources Include="Views/**/*.cshtml" />
-  <TailwindSources Include="$(HtmxViews)/**/*.cshtml" Condition="Exists('$(HtmxViews)')" />
-  <TailwindInputs Include="@(TailwindSources)" />
-  <TailwindInputs Include="$(ExtractedCssClassesFile)" Condition="Exists('$(ExtractedCssClassesFile)')" />
-</ItemGroup>
+You might also want to ensure that npm packages are installed before building Tailwind CSS. Add the following target to your `.csproj` file:
 
-<Target Name="BuildTailwind" AfterTargets="ResolveProjectReferences" Inputs="@(TailwindInputs)" Outputs="$(TailwindOutputFile)">
-  <Exec Command="cd $(ProjectDir)Tools &amp;&amp; npm run build:css" />
-  <!-- Force timestamp update so that MSBuild change detection prevents this task from running unnecessarily -->
-  <Touch Files="$(TailwindOutputFile)" AlwaysCreate="true" />
-</Target>
-
-<!-- Only run npm install when package.json has been modified or .install-stamp doesn't exist -->
-<PropertyGroup>
-  <NpmInstallStampFile>Tools/node_modules/.install-stamp</NpmInstallStampFile>
-</PropertyGroup>
-<Target Name="EnsureNpmPackages" BeforeTargets="BuildTailwind" Inputs="Tools\package.json" Outputs="$(NpmInstallStampFile)">
-  <Exec Command="npm install" WorkingDirectory="Tools" />
-  <Touch Files="$(NpmInstallStampFile)" AlwaysCreate="true" />
-</Target>
+```xml
+  <!-- Only run npm install when package.json has been modified or .install-stamp doesn't exist -->
+  <PropertyGroup>
+    <NpmInstallStampFile>Tools/node_modules/.install-stamp</NpmInstallStampFile>
+  </PropertyGroup>
+  <Target Name="EnsureNpmPackages" BeforeTargets="BuildTailwind" Inputs="Tools\package.json" Outputs="$(NpmInstallStampFile)">
+    <Exec Command="npm install" WorkingDirectory="Tools" />
+    <Touch Files="$(NpmInstallStampFile)" AlwaysCreate="true" />
+  </Target>
 ```
 
 ### Manual Build Commands
@@ -284,11 +184,13 @@ With this setup, you automatically get:
 
 ## Next Steps
 
-- **[Navigation](navigation.md)**: Learn about setting up navigation with NavAction attributes
-- **[Tables](tables.md)**: Implement data tables with sorting, filtering, and pagination  
-- **[Authentication](authentication.md)**: Configure authentication and the AuthStatus component
-- **[Authorization](authorization.md)**: Set up authorization policies and permissions
-- **[Architecture Guide](../developer-guide/architecture.md)**: Understand the component architecture and patterns
+- **[Getting Started](../getting-started.md)** - Complete installation and configuration guide
+- **[Tables](tables.md)** - Interactive data tables with CRUD operations
+- **[Navigation](navigation.md)** - Advanced navigation patterns
+- **[Authorization](authorization.md)** - Permission-based access control
+- **[Authentication](authentication.md)** - OIDC and auth status management
+
+For technical details and extension points, see the **[Developer Guide](../developer-guide/architecture.md)**.
 
 ## Key Features
 

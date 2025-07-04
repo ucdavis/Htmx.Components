@@ -1,5 +1,7 @@
 # Architecture Overview
 
+This guide covers the technical architecture and internal design of Htmx.Components. For getting started with the library, see the **[Getting Started Guide](../getting-started.md)**.
+
 Htmx.Components is built around a modular architecture that leverages ASP.NET Core's dependency injection and MVC patterns to provide a seamless HTMX integration experience.
 
 ## Core Components
