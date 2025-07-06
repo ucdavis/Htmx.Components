@@ -5,6 +5,7 @@ using Htmx.Components.Utilities;
 using Microsoft.AspNetCore.Mvc;
 using static Htmx.Components.Authorization.AuthConstants;
 using static Htmx.Components.State.PageStateConstants;
+using Htmx.Components.Table.Internal;
 
 namespace Htmx.Components.Controllers;
 

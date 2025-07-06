@@ -21,7 +21,7 @@ namespace Htmx.Components.Table.Internal;
 /// by edit operations, providing more efficient updates. It's designed exclusively for
 /// HTMX requests and will throw an exception if used with non-HTMX requests.
 /// </remarks>
-internal class TableOobEditFilter : OobResultFilterBase<TableEditActionAttribute>
+public class TableOobEditFilter : OobResultFilterBase<TableEditActionAttribute>
 {
     private readonly ITableProvider _tableProvider;
     private readonly ViewPaths _viewPaths;

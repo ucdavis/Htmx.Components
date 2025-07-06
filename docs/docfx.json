@@ -4,11 +4,7 @@
             "src": [
                 {
                     "files": [
-                        "**/*.cs"
-                    ],
-                    "exclude": [
-                        "**/bin/**",
-                        "**/obj/**"
+                        "Htmx.Components.csproj"
                     ],
                     "src": "../"
                 }
@@ -20,8 +16,7 @@
             "noRestore": false,
             "namespaceLayout": "flattened",
             "memberLayout": "samePage",
-            "allowCompilationErrors": true,
-            "filter": "filterConfig.yml"
+            "allowCompilationErrors": true
         }
     ],
     "build": {

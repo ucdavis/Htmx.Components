@@ -21,7 +21,7 @@ namespace Htmx.Components.Table.Internal;
 /// The filter ensures that all table-related UI elements are refreshed after operations
 /// that may affect the table's data or state.
 /// </remarks>
-internal class TableOobRefreshFilter : OobResultFilterBase<TableRefreshActionAttribute>
+public class TableOobRefreshFilter : OobResultFilterBase<TableRefreshActionAttribute>
 {
     private readonly ViewPaths _viewPaths;
 

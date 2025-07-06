@@ -1,4 +1,4 @@
-namespace Htmx.Components.Table;
+namespace Htmx.Components.Table.Internal;
 
 /// <summary>
 /// Internal attribute that marks action methods performing table editing operations.
@@ -12,7 +12,7 @@ namespace Htmx.Components.Table;
 /// table model's state.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Method)]
-internal class TableEditActionAttribute : Attribute { }
+public class TableEditActionAttribute : Attribute { }
 
 /// <summary>
 /// Internal attribute that marks action methods refreshing table data.
@@ -26,4 +26,4 @@ internal class TableEditActionAttribute : Attribute { }
 /// reflect the new table state.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Method)]
-internal class TableRefreshActionAttribute : Attribute { }
+public class TableRefreshActionAttribute : Attribute { }
