@@ -13,7 +13,6 @@ This document outlines the key architectural and design decisions made in Htmx.C
 7. [CSS Class Extraction System](#css-class-extraction-system)
 8. [Authorization Integration Strategy](#authorization-integration-strategy)
 9. [ViewComponent-Centric Design](#viewcomponent-centric-design)
-10. [Questions for Clarification](#questions-for-clarification)
 
 ---
 

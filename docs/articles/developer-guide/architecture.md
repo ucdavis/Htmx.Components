@@ -261,14 +261,14 @@ The framework includes a sophisticated JavaScript delivery system that enables s
 
 **HtmxScriptsTagHelper**: Central TagHelper that manages JavaScript behavior inclusion:
 ```html
-<htmx-scripts include="page-state,table-behavior"></htmx-scripts>
+<htmx-scripts include="page-state-headers,table-inline-editing"></htmx-scripts>
 ```
 
 **Script Behaviors**: Modular JavaScript functionalities delivered as Razor partial views:
-- `PageStateBehavior`: Automatic page state management
-- `TableBehavior`: Table interaction and editing behaviors
+- `PageStateHeaders`: Automatic page state management
+- `TableInlineEditing`: Table interaction and editing behaviors
 - `BlurSaveCoordination`: Form coordination and race condition prevention
-- `HtmxAuthRetry`: Authentication retry handling
+- `AuthenticationRetry`: Authentication retry handling
 
 **Benefits:**
 - **Server-side Generation**: Scripts can include dynamically generated URLs and configuration

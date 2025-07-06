@@ -17,10 +17,14 @@
 - name: Developer Guide
   href: articles/developer-guide/
   items:
-  - name: Architecture
+  - name: Architecture Overview
     href: articles/developer-guide/architecture.md
+  - name: Component Architecture
+    href: articles/developer-guide/component-architecture.md
   - name: JavaScript Architecture
     href: articles/developer-guide/javascript-architecture.md
+  - name: Design Choices
+    href: articles/developer-guide/design-choices.md
   - name: Future Directions
     href: articles/developer-guide/future-directions.md
   - name: Custom Providers

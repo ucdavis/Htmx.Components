@@ -191,14 +191,6 @@ The `Table` ViewComponent automatically renders:
 ### Integration with Entity Framework
 Tables work seamlessly with Entity Framework Core through the `WithQueryable()` method, providing efficient database queries with proper pagination and filtering.
 
-## Best Practices
-
-1. **Use Model Handlers**: Always configure tables through model handlers for consistency
-2. **Enable CRUD Carefully**: Only enable CRUD operations on tables where users should be able to modify data
-3. **Optimize Queries**: Use efficient LINQ queries in `WithQueryable()` to avoid performance issues
-4. **Provide Clear Labels**: Use descriptive column headers and input labels
-5. **Handle Errors**: Implement proper error handling in CRUD operations
-
 ## Next Steps
 
 - **[Navigation](navigation.md)**: Learn about NavAction attributes and navigation setup
@@ -528,15 +520,6 @@ private async Task<TableModel<Product, int>> GetProductsPage(int page, int pageS
     return tableModel;
 }
 ```
-
-## Best Practices
-
-1. **Use Appropriate Column Types**: Choose selector columns for data, display columns for actions
-2. **Implement Proper Error Handling**: Always return meaningful error messages from CRUD operations
-3. **Optimize Queries**: Use Entity Framework efficiently with proper includes and no-tracking
-4. **Validate Input**: Implement validation in your CRUD operations
-5. **Consider Authorization**: Protect sensitive operations with proper authorization
-6. **Progressive Enhancement**: Ensure tables work without JavaScript as a fallback
 
 ## Troubleshooting
 

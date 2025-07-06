@@ -171,14 +171,6 @@ private void ConfigureAdminUser(ModelHandlerBuilder<AdminUserModel, int> builder
 }
 ```
 
-## Best Practices
-
-1. **Use Policy-Based Authorization**: Define clear policies rather than role-based authorization directly
-2. **Secure Controllers First**: Apply authorization attributes to controllers and actions
-3. **Test Authorization**: Verify that navigation and functionality respect authorization rules
-4. **Principle of Least Privilege**: Grant users only the minimum permissions needed
-5. **Audit Access**: Regularly review who has access to what resources
-
 ## Common Patterns
 
 ### Role Hierarchy
@@ -583,112 +575,6 @@ public class TenantResourceHandler : AuthorizationHandler<TenantResourceRequirem
             
         if (hasPermission)
             context.Succeed(requirement);
-    }
-}
-```
-
-## Best Practices
-
-### 1. Principle of Least Privilege
-
-Grant users only the minimum permissions necessary:
-
-```csharp
-// Instead of blanket admin access
-[Authorize(Roles = "Admin")]
-
-// Use specific permissions
-[Authorize(Policy = "CanManageUsers")]
-public IActionResult Users() => View();
-```
-
-### 2. Separate Read and Write Operations
-
-Create distinct permissions for different operations:
-
-```csharp
-[ModelConfig("orders")]
-private void ConfigureOrderModel(ModelHandlerBuilder<Order, int> builder)
-{
-    builder.WithQueryable(() => _context.Orders)      // orders:read
-           .WithCreate(CreateOrder)                    // orders:create
-           .WithUpdate(UpdateOrder)                    // orders:update
-           .WithDelete(DeleteOrder);                   // orders:delete
-}
-```
-
-### 3. Use Authorization Policies
-
-Define policies for complex authorization logic:
-
-```csharp
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("CanManageUsers", policy =>
-        policy.RequireRole("Admin", "UserManager")
-              .RequireClaim("department", "HR", "IT"));
-
-    options.AddPolicy("CanViewReports", policy =>
-        policy.RequireAuthenticatedUser()
-              .AddRequirements(new ReportAccessRequirement()));
-});
-```
-
-### 4. Cache Authorization Results
-
-Use caching for expensive authorization operations:
-
-```csharp
-public class CachedAuthorizationService : IAuthorizationService
-{
-    private readonly IAuthorizationService _inner;
-    private readonly IMemoryCache _cache;
-
-    public async Task<AuthorizationResult> AuthorizeAsync(
-        ClaimsPrincipal user, 
-        object resource, 
-        IAuthorizationRequirement requirement)
-    {
-        var cacheKey = $"auth:{user.FindFirst(ClaimTypes.NameIdentifier)?.Value}:{requirement}";
-        
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
-            return await _inner.AuthorizeAsync(user, resource, requirement);
-        });
-    }
-}
-```
-
-### 5. Audit Authorization Decisions
-
-Log authorization successes and failures:
-
-```csharp
-public class AuditingAuthorizationHandler : AuthorizationHandler<IAuthorizationRequirement>
-{
-    private readonly ILogger<AuditingAuthorizationHandler> _logger;
-
-    protected override Task HandleRequirementAsync(
-        AuthorizationHandlerContext context,
-        IAuthorizationRequirement requirement)
-    {
-        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        
-        if (context.HasSucceeded)
-        {
-            _logger.LogInformation(
-                "Authorization succeeded for user {UserId} with requirement {Requirement}",
-                userId, requirement.GetType().Name);
-        }
-        else
-        {
-            _logger.LogWarning(
-                "Authorization failed for user {UserId} with requirement {Requirement}",
-                userId, requirement.GetType().Name);
-        }
-        
-        return Task.CompletedTask;
     }
 }
 ```

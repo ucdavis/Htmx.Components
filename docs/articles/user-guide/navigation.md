@@ -145,14 +145,6 @@ Only navigation items the user is authorized to access will be displayed in the 
 4. Authorization policies are automatically applied to filter visible items
 5. HTMX is used for smooth navigation between views
 
-## Best Practices
-
-1. **Use Clear Display Names**: Choose descriptive names that users will understand
-2. **Consistent Icons**: Use a consistent icon library (like FontAwesome) throughout your application
-3. **Logical Ordering**: Use the `Order` property to organize navigation logically
-4. **Authorization**: Always apply appropriate authorization attributes to protect sensitive actions
-5. **ViewNames**: Use descriptive view names that indicate their purpose
-
 ## Next Steps
 
 - **[Tables](tables.md)**: Learn about implementing data tables with model handlers

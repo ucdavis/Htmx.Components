@@ -18,13 +18,13 @@ public class HtmxScriptsTagHelper : TagHelper
 
     /// <summary>
     /// Gets or sets which scripts to include. If null or empty, includes all scripts.
-    /// Valid values: "page-state", "table-behavior", "blur-save-coordination", "auth-retry"
+    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "authentication-retry"
     /// </summary>
     public string? Include { get; set; }
 
     /// <summary>
     /// Gets or sets which scripts to exclude from the default set.
-    /// Valid values: "page-state", "table-behavior", "blur-save-coordination", "auth-retry"
+    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "authentication-retry"
     /// </summary>
     public string? Exclude { get; set; }
 
@@ -106,10 +106,10 @@ public class HtmxScriptsTagHelper : TagHelper
     {
         var allScripts = new[]
         {
-            "PageStateBehavior",
-            "TableBehavior", 
+            "PageStateHeaders",
+            "TableInlineEditing", 
             "BlurSaveCoordination",
-            "HtmxAuthRetry"
+            "AuthenticationRetry"
         };
 
         // If Include is specified, only include those
@@ -149,10 +149,10 @@ public class HtmxScriptsTagHelper : TagHelper
     {
         return userFriendlyName.ToLowerInvariant() switch
         {
-            "page-state" => "PageStateBehavior",
-            "table-behavior" => "TableBehavior",
+            "page-state-headers" => "PageStateHeaders",
+            "table-inline-editing" => "TableInlineEditing",
             "blur-save-coordination" => "BlurSaveCoordination", 
-            "auth-retry" => "HtmxAuthRetry",
+            "authentication-retry" => "AuthenticationRetry",
             _ => null
         };
     }

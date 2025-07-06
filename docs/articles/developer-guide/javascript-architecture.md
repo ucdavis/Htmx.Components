@@ -10,18 +10,18 @@ Htmx.Components uses dynamically generated JavaScript behaviors delivered throug
 All JavaScript behaviors are located in:
 ```
 /src/Views/Shared/Scripts/
-├── _PageStateBehavior.cshtml
-├── _TableBehavior.cshtml  
+├── _PageStateHeaders.cshtml
+├── _TableInlineEditing.cshtml  
 ├── _BlurSaveCoordination.cshtml
-└── _HtmxAuthRetry.cshtml
+└── _AuthenticationRetry.cshtml
 ```
 
 ### Available Behaviors
 
-- **PageStateBehavior**: Automatically adds page state to HTMX request headers
-- **TableBehavior**: Defines 'tableinline' extension and manages table editing mode visual states
+- **PageStateHeaders**: Automatically adds page state to HTMX request headers
+- **TableInlineEditing**: Defines 'tableinline' extension and manages table editing mode visual states
 - **BlurSaveCoordination**: Prevents race conditions between blur events and save/submit operations
-- **HtmxAuthRetry**: Handles popup-based authentication retry for 401 errors
+- **AuthenticationRetry**: Handles popup-based authentication retry for 401 errors
 
 ## Usage
 
@@ -32,19 +32,19 @@ All JavaScript behaviors are located in:
 
 ### Include Specific Scripts Only
 ```html
-<htmx-scripts include="page-state,table-behavior"></htmx-scripts>
+<htmx-scripts include="page-state-headers,table-inline-editing"></htmx-scripts>
 ```
 
 ### Exclude Specific Scripts
 ```html
-<htmx-scripts exclude="auth-retry"></htmx-scripts>
+<htmx-scripts exclude="authentication-retry"></htmx-scripts>
 ```
 
 ### Valid Script Names
-- `page-state`
-- `table-behavior` 
+- `page-state-headers`
+- `table-inline-editing` 
 - `blur-save-coordination`
-- `auth-retry`
+- `authentication-retry`
 
 ## Benefits
 
@@ -90,19 +90,12 @@ public class HtmxScriptsTagHelper : TagHelper
 
 ### Script Mapping
 
-Each behavior is mapped to a specific partial view:
+Each behavior is delivered through a Razor partial view:
 
-| Script Name | Partial View | Purpose |
-|-------------|-------------|---------|
-| `page-state` | `_PageStateBehavior.cshtml` | Page state management |
-| `table-behavior` | `_TableBehavior.cshtml` | Table interactions |
-| `blur-save-coordination` | `_BlurSaveCoordination.cshtml` | Form coordination |
-| `auth-retry` | `_HtmxAuthRetry.cshtml` | Authentication handling |
+| Partial View | Purpose |
+|-------------|---------|
+| `_PageStateHeaders.cshtml` | Page state management |
+| `_TableInlineEditing.cshtml` | Table interactions |
+| `_BlurSaveCoordination.cshtml` | Form coordination |
+| `_AuthenticationRetry.cshtml` | Authentication handling |
 
-### Best Practices
-
-1. **Keep behaviors focused**: Each script should handle a single concern
-2. **Use server-side data**: Leverage Razor syntax for dynamic configuration
-3. **Test individually**: Each behavior can be tested in isolation
-4. **Document thoroughly**: Update this documentation when adding new behaviors
-5. **Consider performance**: Inline scripts reduce HTTP requests but increase page size

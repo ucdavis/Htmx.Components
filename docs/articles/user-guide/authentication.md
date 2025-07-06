@@ -187,11 +187,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 ## Best Practices
 
-1. **Middleware Order**: Always place `UseHtmxPageState()` before `UseAuthentication()`
-2. **Claim Configuration**: Configure the correct user ID claim type for your identity provider
-3. **Authorization Attributes**: Use standard ASP.NET Core authorization attributes on controllers and actions
-4. **Status Updates**: Use `[AuthStatusUpdate]` on actions that change authentication state
-5. **Popup Handling**: Implement proper popup authentication for better user experience
+1. **Claim Configuration**: Configure the correct user ID claim type for your identity provider
+2. **Authorization Attributes**: Use standard ASP.NET Core authorization attributes on controllers and actions
+3. **Status Updates**: Use `[AuthStatusUpdate]` on actions that change authentication state
 
 ## Next Steps
 
@@ -314,15 +312,6 @@ app.Use(async (context, next) =>
     await next();
 });
 ```
-
-## Best Practices
-
-1. **Use HTTPS**: Always use HTTPS in production
-2. **Secure Cookies**: Configure secure cookie settings
-3. **Token Validation**: Validate authentication tokens properly
-4. **Session Management**: Implement proper session timeout
-5. **Audit Logging**: Log authentication events
-6. **Rate Limiting**: Implement rate limiting for login attempts
 
 ## Troubleshooting
 
