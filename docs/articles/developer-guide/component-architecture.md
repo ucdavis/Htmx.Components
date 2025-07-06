@@ -104,7 +104,7 @@ private void ConfigureUserModel(ModelHandlerBuilder<User, int> builder)
 
 ## View Location Discovery
 
-The self-contained structure is enabled by a custom [`ComponentViewLocationExpander`](../../api/Htmx.Components.Configuration.ComponentViewLocationExpander.html) that automatically looks for views in component folders:
+The self-contained structure is enabled by a custom <xref:Htmx.Components.Configuration.ComponentViewLocationExpander> that automatically looks for views in component folders:
 
 - `/src/Components/{ComponentName}/Views/{ViewName}.cshtml`
 - `/src/Components/{ComponentName}/Views/Shared/{ViewName}.cshtml`

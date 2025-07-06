@@ -6,7 +6,7 @@ Htmx.Components is built around a modular architecture that leverages ASP.NET Co
 
 ## Core Components
 
-### 1. Model Handlers ([`ModelHandler<T, TKey>`](../../api/Htmx.Components.Models.ModelHandler-2.html))
+### 1. Model Handlers (<xref:Htmx.Components.Models.ModelHandler`2>)
 
 Model handlers are the central abstraction that define how data models are processed, displayed, and manipulated:
 
@@ -32,17 +32,17 @@ public class ModelHandler<T, TKey> : ModelHandler
 
 The table system provides a comprehensive data grid solution:
 
-#### TableModel ([`TableModel<T, TKey>`](../../api/Htmx.Components.Table.Models.TableModel-2.html))
+#### TableModel (<xref:Htmx.Components.Table.Models.TableModel`2>)
 - Represents the complete table structure
 - Contains columns, rows, pagination state
 - Supports sorting, filtering, and CRUD operations
 
-#### TableColumnModel ([`TableColumnModel<T, TKey>`](../../api/Htmx.Components.Table.Models.TableColumnModel-2.html))
+#### TableColumnModel (<xref:Htmx.Components.Table.Models.TableColumnModel`2>)
 - Defines individual column behavior
 - Supports custom rendering, filtering, and actions
 - Type-safe property binding via expressions
 
-#### TableProvider ([`ITableProvider`](../../api/Htmx.Components.Table.ITableProvider.html))
+#### TableProvider (<xref:Htmx.Components.Table.ITableProvider>)
 - Handles data fetching and query building
 - Applies filtering, sorting, and pagination
 - Works with Entity Framework Core queryables
@@ -52,7 +52,7 @@ The table system provides a comprehensive data grid solution:
 #### INavProvider
 The navigation system provides authorization and context-aware navigation and supports two approaches to defining navigation actions:
 
-**Attribute-Based Navigation ([`AttributeNavProvider`](../../api/Htmx.Components.NavBar.AttributeNavProvider.html)):**
+**Attribute-Based Navigation (<xref:Htmx.Components.NavBar.AttributeNavProvider>):**
 ```csharp
 [NavActionGroup(Order = 1, DisplayName = "Admin", Icon = "fas fa-cog")]
 public class AdminController : Controller
@@ -62,7 +62,7 @@ public class AdminController : Controller
 }
 ```
 
-**Builder-Based Navigation ([`BuilderBasedNavProvider`](../../api/Htmx.Components.NavBar.BuilderBasedNavProvider.html)):**
+**Builder-Based Navigation (<xref:Htmx.Components.NavBar.BuilderBasedNavProvider>):**
 ```csharp
 services.AddHtmxComponents(options =>
 {
@@ -78,7 +78,7 @@ services.AddHtmxComponents(options =>
 
 ### 4. State Management
 
-#### PageState ([`IPageState`](../../api/Htmx.Components.State.IPageState.html))
+#### PageState (<xref:Htmx.Components.State.IPageState>)
 Provides encrypted, client-side state management that enables stateful interactions while maintaining RESTful principles:
 
 ```csharp
@@ -125,11 +125,11 @@ public abstract class OobResultFilterBase<T> : IAsyncResultFilter
 ```
 
 #### Specialized Filters
-- [`TableOobRefreshFilter`](../../api/Htmx.Components.Table.Internal.TableOobRefreshFilter.html): Updates table components
-- [`TableOobEditFilter`](../../api/Htmx.Components.Table.Internal.TableOobEditFilter.html): Handles inline editing
-- [`NavActionResultFilter`](../../api/Htmx.Components.NavBar.Internal.NavActionResultFilter.html): Updates navigation state
-- [`AuthStatusUpdateFilter`](../../api/Htmx.Components.AuthStatus.Internal.AuthStatusUpdateFilter.html): Refreshes authentication status
-- [`PageStateOobInjectorFilter`](../../api/Htmx.Components.Filters.PageStateOobInjectorFilter.html): Manages state synchronization
+- <xref:Htmx.Components.Table.Internal.TableOobRefreshFilter>: Updates table components
+- <xref:Htmx.Components.Table.Internal.TableOobEditFilter>: Handles inline editing
+- <xref:Htmx.Components.NavBar.Internal.NavActionResultFilter>: Updates navigation state
+- <xref:Htmx.Components.AuthStatus.Internal.AuthStatusUpdateFilter>: Refreshes authentication status
+- <xref:Htmx.Components.Filters.PageStateOobInjectorFilter>: Manages state synchronization
 
 ### 6. Authorization Integration
 
@@ -172,7 +172,7 @@ public class OperationAuthorizationRequirementFactory : IAuthorizationRequiremen
 2. The factory creates appropriate `IAuthorizationRequirement` instances
 3. ASP.NET Core's `IAuthorizationService.AuthorizeAsync()` evaluates requirements
 4. Authorization handlers (registered in DI) process the requirements
-5. Results are cached by [`AuthorizationMetadataService`](../../api/Htmx.Components.Services.AuthorizationMetadataService.html) for performance
+5. Results are cached by <xref:Htmx.Components.Services.AuthorizationMetadataService> for performance
 
 **Custom Authorization Handlers:**
 You can register custom authorization handlers that work with the requirements:
@@ -242,7 +242,7 @@ public class UserController : Controller
 **Authorization Evaluation Process:**
 1. **Metadata Extraction**: Parses `[Authorize]` and `[AllowAnonymous]` attributes from controllers and actions
 2. **Policy Evaluation**: Uses `IAuthorizationService.AuthorizeAsync()` to evaluate each policy requirement
-3. **Role Checking**: Delegates role validation to the configured [`IRoleService`](../../api/Htmx.Components.Services.IRoleService.html) implementation
+3. **Role Checking**: Delegates role validation to the configured <xref:Htmx.Components.Services.IRoleService> implementation
 4. **Result Caching**: Caches authorization decisions per user/policy combination to improve performance
 5. **Composition Logic**: Combines policy results (AND semantics) with role results (OR semantics)
 
@@ -255,7 +255,7 @@ This approach ensures that all authorization decisions flow through ASP.NET Core
 
 ### 7. JavaScript Architecture
 
-The framework includes a sophisticated JavaScript delivery system that enables server-side configuration and dynamic script inclusion through the [`HtmxScriptsTagHelper`](../../api/Htmx.Components.TagHelpers.HtmxScriptsTagHelper.html).
+The framework includes a sophisticated JavaScript delivery system that enables server-side configuration and dynamic script inclusion through the <xref:Htmx.Components.TagHelpers.HtmxScriptsTagHelper>.
 
 #### Key Components
 
@@ -313,7 +313,7 @@ Client State → HTTP Header → PageStateMiddleware → IPageState → Result F
 ```
 
 1. Client sends encrypted state (from hidden input) in headers
-2. Middleware deserializes state into [`IPageState`](../../api/Htmx.Components.State.IPageState.html)
+2. Middleware deserializes state into <xref:Htmx.Components.State.IPageState>
 3. Controllers modify state during processing
 4. Result filter detects state changes
 5. OOB updates sync client-side state

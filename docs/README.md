@@ -96,14 +96,34 @@ API documentation is automatically generated from XML comments in the C# source 
 To add new articles:
 1. Create markdown files in the `articles/` directory
 2. Update `articles/toc.yml` to include your new articles in the table of contents
-3. Reference C# types using backticks (e.g., [`ModelHandler`](../../api/Htmx.Components.Models.ModelHandler.html)) - they will be automatically converted to links
+3. Reference C# types using DocFX cross-references (see [Type Link References](#type-link-references) below)
 
-### Type Link Conversion
-The system automatically converts type mentions in markdown files to API documentation links:
-- `TypeName` becomes [`TypeName`](../../api/Namespace.TypeName.html)
-- `GenericType<T>` becomes [`GenericType<T>`](../../api/Namespace.GenericType-1.html)
+### Type Link References
+To reference C# types in your documentation, use DocFX cross-references instead of direct HTML links:
 
-This works for all types discovered in the source code.
+**✅ Correct (using xref):**
+```markdown
+- Use <xref:Htmx.Components.Models.ModelHandler`2> for model configuration
+- The <xref:Htmx.Components.Table.ITableProvider> interface
+- Configure with <xref:Htmx.Components.ViewResults.MultiSwapViewResult>
+```
+
+**❌ Incorrect (direct HTML links):**
+```markdown
+- Use [`ModelHandler<T, TKey>`](../../api/Htmx.Components.Models.ModelHandler-2.html)
+- The [`ITableProvider`](../../api/Htmx.Components.Table.ITableProvider.html) interface
+```
+
+**Cross-Reference Syntax:**
+- **Full type name**: `<xref:Htmx.Components.Models.ModelHandler`2>` (use backtick + number for generics)
+- **Inline with custom text**: `[Custom Text](xref:Htmx.Components.Models.ModelHandler`2)`
+- **Auto-generated text**: `<xref:Htmx.Components.Models.ModelHandler`2>` (uses type name)
+
+**Benefits of xref:**
+- ✅ No broken links during build process
+- ✅ Automatically resolves to correct URLs
+- ✅ DocFX validates that the referenced types exist
+- ✅ Works with generic types properly
 
 ## Troubleshooting
 

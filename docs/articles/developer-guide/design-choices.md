@@ -44,7 +44,7 @@ Components/AuthStatus/
 
 ## Model Handler Pattern
 
-**Decision**: Use a centralized [`ModelHandler<T, TKey>`](../../api/Htmx.Components.Models.ModelHandler-2.html) abstraction for CRUD operations and table building.
+**Decision**: Use a centralized <xref:Htmx.Components.Models.ModelHandler`2> abstraction for CRUD operations and table building.
 
 ```csharp
 [ModelConfig("users")]
@@ -70,7 +70,7 @@ private void ConfigureUserModel(ModelHandlerBuilder<User, int> builder)
 
 ## Multi-Swap View Results
 
-**Decision**: Implement [`MultiSwapViewResult`](../../api/Htmx.Components.ViewResults.MultiSwapViewResult.html) to return multiple HTMX view updates in a single response.
+**Decision**: Implement <xref:Htmx.Components.ViewResults.MultiSwapViewResult> to return multiple HTMX view updates in a single response.
 
 ```csharp
 return new MultiSwapViewResult()
@@ -251,7 +251,7 @@ options.WithResourceOperationRegistry<ResourceOperationRegistry>();
 ViewComponents alone don't automatically handle HTMX responses. The framework integrates them through:
 - **Result Filters**: Automatically render ViewComponents for OOB updates based on attributes
 - **MultiSwapViewResult**: Can render ViewComponents by name when given to `WithOobContent()`
-- **Controller Detection**: Controllers can manually detect HTMX requests and use `MultiSwapViewResult`
+- **Controller Detection**: Controllers can manually detect HTMX requests and use <xref:Htmx.Components.ViewResults.MultiSwapViewResult>
 
 **Trade-offs**:
 - More heavyweight than simple partial views

@@ -308,7 +308,7 @@ public class OrderAccessHandler : AuthorizationHandler<OrderAccessRequirement, O
 
 ### Role Service
 
-Implement [`IRoleService`](../../api/Htmx.Components.Services.IRoleService.html) for role-based authorization:
+Implement <xref:Htmx.Components.Services.IRoleService> for role-based authorization:
 
 ```csharp
 public class DatabaseRoleService : IRoleService

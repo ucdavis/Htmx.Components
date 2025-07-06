@@ -6,7 +6,7 @@ Htmx.Components is an evolving framework with opportunities for enhancement and 
 
 ## Enhanced Model Handler Extensibility
 
-Currently, [`ModelHandler<T, TKey>`](../../api/Htmx.Components.Models.ModelHandler-2.html) is configured through a builder pattern using delegates. Future enhancements could provide more extensibility points.
+Currently, <xref:Htmx.Components.Models.ModelHandler`2> is configured through a builder pattern using delegates. Future enhancements could provide more extensibility points.
 
 ### Suggested: Event Hooks for CRUD Operations
 

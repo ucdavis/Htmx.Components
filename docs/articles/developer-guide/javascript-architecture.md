@@ -76,7 +76,7 @@ This system enables:
 
 ### HtmxScriptsTagHelper
 
-The [`HtmxScriptsTagHelper`](../../api/Htmx.Components.TagHelpers.HtmxScriptsTagHelper.html) is the central component that manages JavaScript inclusion:
+The <xref:Htmx.Components.TagHelpers.HtmxScriptsTagHelper> is the central component that manages JavaScript inclusion:
 
 ```csharp
 [HtmlTargetElement("htmx-scripts")]
