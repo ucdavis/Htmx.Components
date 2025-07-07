@@ -65,6 +65,7 @@ You need to implement the authorization interfaces:
 
 ```csharp
 // Example permission requirement and factory
+public class PermissionRequirement : IAuthorizationRequirement
 {
     public IReadOnlyList<string>? AllowedRoles { get; }
     public string? Resource { get; }
