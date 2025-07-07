@@ -64,18 +64,27 @@ app.Run();
 You need to implement the authorization interfaces:
 
 ```csharp
-// Simple permission factory for getting started
-public class SimplePermissionFactory : IAuthorizationRequirementFactory
+// Example permission requirement and factory
+{
+    public IReadOnlyList<string>? AllowedRoles { get; }
+    public string? Resource { get; }
+    public string? Operation { get; }
+
+    private PermissionRequirement(IReadOnlyList<string>? allowedRoles, string? typeId, string? operation)
+    {
+        AllowedRoles = allowedRoles;
+        Resource = typeId;
+        Operation = operation;
+    }
+}
+
+public class PermissionRequirementFactory : IAuthorizationRequirementFactory
 {
     public IAuthorizationRequirement ForOperation(string resource, string operation)
-    {
-        return new OperationAuthorizationRequirement { Name = $"{resource}:{operation}" };
-    }
+        => new PermissionRequirement(null, resource, operation);
 
     public IAuthorizationRequirement ForRoles(params string[] roles)
-    {
-        return new RolesAuthorizationRequirement(roles);
-    }
+        => new PermissionRequirement(roles, null, null);
 }
 
 // Simple resource registry for getting started
@@ -91,6 +100,9 @@ public class InMemoryResourceRegistry : IResourceOperationRegistry
 }
 ```
 
+> **Note:**  
+To make use of your custom `PermissionRequirement`, you must implement an appropriate [`AuthorizationHandler<TRequirement>`](https://learn.microsoft.com/aspnet/core/security/authorization/policies) that contains the logic for evaluating the requirement. For details, consult the official Microsoft documentation on implementing custom authorization handlers.
+
 ### 3. Add HTMX to Your Layout
 
 Include HTMX in your layout file (`_Layout.cshtml`):
@@ -102,7 +114,7 @@ Include HTMX in your layout file (`_Layout.cshtml`):
     <title>My App</title>
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <!-- Optional: Include CSS framework like Tailwind or Bootstrap -->
+    <!-- Recommended: Include Tailwind CSS with daisyUI for default styling -->
 </head>
 <body>
     <!-- Navigation Component -->
@@ -156,7 +168,11 @@ public class UsersController : Controller
     {
         var modelHandler = await _modelRegistry.GetModelHandler<User, int>("users", ModelUI.Table);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync();
-        return View(tableModel);
+        // Note that we are returning an ObjectResult here rather than a ViewResult.
+        // Htmx.Components makes use of result filters and action context to determine whether to return
+        // a ViewResult or a htmx-specific MultiSwapViewResult. For htmx requests, filters determine
+        // what views and models go into building the response.
+        return Ok(tableModel);
     }
 
     [ModelConfig("users")]
