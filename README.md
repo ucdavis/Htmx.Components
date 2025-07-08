@@ -36,7 +36,11 @@ public class AdminController : Controller
     public async Task<IActionResult> Users()
     {
         var tableModel = await _modelHandler.BuildTableModelAsync();
-        return View(tableModel);
+        // Note that we are returning an ObjectResult here rather than a ViewResult.
+        // Htmx.Components makes use of result filters and action context to determine whether to return
+        // a ViewResult or a htmx-specific MultiSwapViewResult. For htmx requests, filters determine
+        // what partial views and models go into building the response.
+        return Ok(tableModel);
     }
 }
 ```
