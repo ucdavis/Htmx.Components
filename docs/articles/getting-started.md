@@ -34,7 +34,8 @@ builder.Services.AddHtmxComponents(options =>
     options.WithAuthorizationRequirementFactory<SimplePermissionFactory>();
     options.WithResourceOperationRegistry<InMemoryResourceRegistry>();
     
-    // Optional: Configure navigation
+    // Optional: Configure navigation (generally not necessary unless declaritive navigation in
+    // controllers via NavAction and NavActionGroup attributes is insufficient)
     options.WithNavBuilder(nav =>
     {
         nav.AddAction(action => action
@@ -50,7 +51,7 @@ builder.Services.AddMvc()
 
 var app = builder.Build();
 
-// Configure pipeline - IMPORTANT: Add middleware before auth
+// Configure pipeline
 app.UseHtmxPageState();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -58,6 +59,9 @@ app.MapControllers();
 
 app.Run();
 ```
+
+> **See also:**  
+> [Declarative Navigation with NavAction and NavActionGroup](user-guide/navigation.md)
 
 ### 2. Create Required Implementations
 
@@ -219,14 +223,3 @@ Create the corresponding view (`Views/Users/Index.cshtml`):
 - [Implement authentication](user-guide/authentication.md)
 - [Set up authorization](user-guide/authorization.md)
 
-## Troubleshooting
-
-### Common Issues
-
-1. **"PageState not found" error**: Make sure you call `app.UseHtmxPageState()` before authentication middleware.
-
-2. **Navigation not appearing**: Ensure you've registered the navigation provider and included the NavBar component in your layout.
-
-3. **Table not working**: Verify that your model handler is properly configured and the Table component is invoked with the correct model.
-
-4. **Authorization errors**: Check that you've implemented <xref:Htmx.Components.Authorization.IAuthorizationRequirementFactory> and <xref:Htmx.Components.Authorization.IResourceOperationRegistry>.
