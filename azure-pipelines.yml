@@ -59,4 +59,4 @@ steps:
       custom: 'nuget'
       arguments: 'push $(Build.ArtifactStagingDirectory)/**/*.nupkg --api-key $(NUGET_API_KEY) --source https://api.nuget.org/v3/index.json --skip-duplicate'
     env:
-      NUGET_API_KEY: $(NuGetApiKey)
+      NUGET_API_KEY: $(NUGETAPIKEY)
