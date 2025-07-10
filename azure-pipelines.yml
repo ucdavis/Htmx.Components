@@ -10,10 +10,10 @@ variables:
   buildConfiguration: "Release"
   majorVersion: 1
   minorVersion: 0
-  patchVersion: $[counter(variables['minorVersion'], 0)]
+  patchVersion: $[counter(format('{0}.{1}', variables['majorVersion'], variables['minorVersion']), 0)]
   version: $(majorVersion).$(minorVersion).$(patchVersion)
 
-name: $(majorVersion).$(minorVersion).$(patchVersion)
+name: $(version)
 
 steps:
   - task: UseDotNet@2
@@ -22,17 +22,22 @@ steps:
       version: "8.0.x"
 
   - task: DotNetCoreCLI@2
+    displayName: 'Restore packages'
     inputs:
       command: 'restore'
       projects: '$(solution)'
 
   - task: DotNetCoreCLI@2
+    displayName: 'Build solution'
     inputs:
       command: 'build'
       projects: '$(solution)'
-      arguments: '--configuration $(buildConfiguration)'
+      arguments: '--configuration $(buildConfiguration) --no-restore'
+
+  # TODO: Add test execution here
 
   - task: DotNetCoreCLI@2
+    displayName: 'Pack NuGet package'
     inputs:
       command: "pack"
       packagesToPack: "Htmx.Components.csproj"
@@ -40,17 +45,18 @@ steps:
       configuration: "$(buildConfiguration)"
 
   - task: PublishBuildArtifacts@1
+    displayName: 'Publish artifacts'
     inputs:
       PathtoPublish: "$(Build.ArtifactStagingDirectory)"
       ArtifactName: "drop"
       publishLocation: "Container"
 
-  - script: |
-      dotnet nuget push "$(Build.ArtifactStagingDirectory)/**/*.nupkg" \
-        --api-key "$(NUGET_API_KEY)" \
-        --source "https://api.nuget.org/v3/index.json" \
-        --skip-duplicate
+  - task: DotNetCoreCLI@2
+    displayName: 'Push to NuGet.org'
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-    displayName: 'Push NuGet package to NuGet.org'
+    inputs:
+      command: 'custom'
+      custom: 'nuget'
+      arguments: 'push $(Build.ArtifactStagingDirectory)/**/*.nupkg --api-key $(NUGET_API_KEY) --source https://api.nuget.org/v3/index.json --skip-duplicate'
     env:
-      NUGET_API_KEY: $(NUGET_API_KEY)
+      NUGET_API_KEY: $(NuGetApiKey)

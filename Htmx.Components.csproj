@@ -37,6 +37,7 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="LICENSE" Pack="true" PackagePath="\" />
     <None Include="docs/images/logo.png" Pack="true" PackagePath="logo.png" />
+    <None Include="content/css-extractor-patterns.txt" Pack="true" PackagePath="content/css-extractor-patterns.txt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -65,19 +66,9 @@
 
   <!-- CSS Extraction -->
   <ItemGroup>
-    <PackageReference Include="CssExtractor.MSBuild" Version="1.4.0">
+    <PackageReference Include="CssExtractor.MSBuild" Version="1.7.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
-
-  <PropertyGroup>
-    <!-- Custom patterns for .WithClass(...) and .WithIcon(...) expressions -->
-    <CssExtractorCustomPatterns>
-      \.WithClass\s*\(\s*"([^"]+)"\s*\)
-      ;
-      \.WithIcon\s*\(\s*"([^"]+)"\s*\)
-    </CssExtractorCustomPatterns>
-  </PropertyGroup>
 
 </Project>
