@@ -69,7 +69,7 @@ cd docs
 
 # Clean output directories
 rm -rf _site
-find api -type f \( -name '*.yml' -o -name '.manifest' \) -delete 2>/dev/null || true
+find api -type f \( \( -name '*.yml' -a ! -name 'toc.yml' \) -o -name '.manifest' \) -delete 2>/dev/null || true
 
 # Generate documentation with warnings as errors
 docfx docfx.json --logLevel Verbose --warningsAsErrors

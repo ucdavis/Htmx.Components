@@ -132,10 +132,10 @@ clean_output_directories() {
         print_success "Removed _site directory"
     fi
     
-    # Clean API directory but preserve index.md
+    # Clean API directory but preserve index.md and toc.yml
     if [[ -d "api" ]]; then
-        find api -type f \( -name '*.yml' -o -name '.manifest' \) -delete
-        print_success "Removed .yml and .manifest files from api directory (preserved index.md)"
+        find api -type f \( \( -name '*.yml' -a ! -name 'toc.yml' \) -o -name '.manifest' \) -delete 2>/dev/null || true
+        print_success "Removed .yml and .manifest files from api directory (preserved index.md and toc.yml)"
     fi
 }
 

@@ -25,7 +25,8 @@ jobs:
       run: |
         cd docs
         rm -rf _site
-        find api -type f \( -name '*.yml' -o -name '.manifest' \) -delete 2>/dev/null || true
+        # Clean API directory but preserve index.md and toc.yml
+        find api -type f \( \( -name '*.yml' -a ! -name 'toc.yml' \) -o -name '.manifest' \) -delete 2>/dev/null || true
     
     - name: Build Documentation
       run: |
