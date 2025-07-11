@@ -4,13 +4,9 @@
 # 
 # This script performs the following operations:
 # 1. Cleans previous build artifacts
-# 2. Discovers types from C# source code
-# 3. Converts type mentions in markdown to API documentation links  
-# 4. Generates documentation using DocFX (with optional server mode)
+# 2. Generates documentation using DocFX (with optional server mode)
 #
 # Features:
-# - Automatic type discovery from source code
-# - Smart type link conversion with backup/restore
 # - Robust process cleanup for server mode
 # - Cross-platform compatibility (tested on macOS)
 
@@ -27,21 +23,6 @@ readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
-
-# Cross-platform compatibility for sed command
-# Some platforms use different sed syntax for in-place editing
-safe_sed() {
-    local pattern="$1"
-    local file="$2"
-    
-    if sed --version >/dev/null 2>&1; then
-        # GNU sed (Linux)
-        sed -i "$pattern" "$file"
-    else
-        # BSD sed (macOS) 
-        sed -i '' "$pattern" "$file"
-    fi
-}
 
 # Logging functions
 print_status() {
@@ -65,7 +46,7 @@ usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-Generate documentation for .NET projects using DocFX with automatic type link conversion.
+Generate documentation for .NET projects using DocFX.
 
 Options:
   -s, --serve [PORT]    Serve documentation after building (default port: ${DEFAULT_PORT})
@@ -139,12 +120,6 @@ validate_environment() {
         print_error "Please install DocFX: https://dotnet.github.io/docfx/"
         exit 1
     fi
-    
-    # Check for perl availability (used for advanced generic type processing)
-    if ! command -v perl &> /dev/null; then
-        print_warning "Perl not found - generic type link conversion will be limited"
-        print_warning "For Windows users: Consider installing Perl or using WSL for full functionality"
-    fi
 }
 
 # Clean output directories before building
@@ -162,280 +137,6 @@ clean_output_directories() {
         find api -type f \( -name '*.yml' -o -name '.manifest' \) -delete
         print_success "Removed .yml and .manifest files from api directory (preserved index.md)"
     fi
-}
-
-# ============================================================================
-# TYPE DISCOVERY AND LINK CONVERSION FUNCTIONS
-# ============================================================================
-
-# Discover C# types from source files
-discover_types() {
-    local src_dir="$1"
-    [[ "$VERBOSE" == true ]] && print_status "Discovering types from source code in: $src_dir"
-    
-    # Create a temporary file to store results
-    local temp_file=$(mktemp)
-    
-    # Find all C# files and process them
-    find "$src_dir" -name "*.cs" -type f > "${temp_file}.files" 2>/dev/null || true
-    
-    if [[ ! -s "${temp_file}.files" ]]; then
-        [[ "$VERBOSE" == true ]] && print_warning "No .cs files found in $src_dir"
-        rm -f "${temp_file}.files" "${temp_file}"
-        return 1
-    fi
-    
-    while IFS= read -r file; do
-        [[ ! -f "$file" ]] && continue
-        
-        # Extract namespace from the file
-        local namespace
-        namespace=$(grep "^namespace " "$file" 2>/dev/null | head -1 | sed 's/namespace //' | sed 's/[;{].*//' || true)
-        
-        if [[ -n "$namespace" ]]; then
-            # Find type declarations and extract type names
-            grep -E "^[[:space:]]*(public|internal) (class|interface|enum|struct) " "$file" 2>/dev/null | while IFS= read -r line; do
-                local type_name
-                type_name=$(echo "$line" | sed -E 's/.*(public|internal) (class|interface|enum|struct) ([A-Za-z_][A-Za-z0-9_]*).*/\3/' 2>/dev/null || true)
-                
-                if [[ -n "$type_name" && "$type_name" != "$line" ]]; then
-                    echo "${type_name}:${namespace}"
-                fi
-            done >> "$temp_file"
-        fi
-    done < "${temp_file}.files"
-    
-    # Output unique results
-    if [[ -s "$temp_file" ]]; then
-        sort -u "$temp_file"
-    fi
-    
-    # Cleanup
-    rm -f "${temp_file}.files" "$temp_file"
-}
-
-# Find the source directory containing C# files
-find_source_directory() {
-    local script_dir="$1"
-    local candidates=("$script_dir/../src" "$script_dir/..")
-    
-    [[ "$VERBOSE" == true ]] && print_status "Looking for source directory from: $script_dir"
-    
-    for dir in "${candidates[@]}"; do
-        [[ "$VERBOSE" == true ]] && print_status "Checking candidate directory: $dir"
-        
-        if [[ -d "$dir" ]]; then
-            [[ "$VERBOSE" == true ]] && print_status "Directory exists: $dir"
-            
-            # Count C# files
-            local cs_count
-            cs_count=$(find "$dir" -name "*.cs" -type f 2>/dev/null | wc -l)
-            [[ "$VERBOSE" == true ]] && print_status "Found $cs_count C# files in $dir"
-            
-            if [[ $cs_count -gt 0 ]]; then
-                echo "$dir"
-                return 0
-            fi
-        else
-            [[ "$VERBOSE" == true ]] && print_status "Directory does not exist: $dir"
-        fi
-    done
-    
-    print_error "Could not find C# source files. Tried: ${candidates[*]}"
-    
-    # Debug: show what's actually in the script directory
-    if [[ "$VERBOSE" == true ]]; then
-        print_status "Contents of script directory ($script_dir):"
-        ls -la "$script_dir" || true
-        print_status "Contents of parent directory ($script_dir/..):"
-        ls -la "$script_dir/.." || true
-    fi
-    
-    return 1
-}
-
-# Build type mappings from discovered types
-build_type_mappings() {
-    local script_dir="$1"
-    local src_dir
-    
-    if ! src_dir=$(find_source_directory "$script_dir"); then
-        return 1
-    fi
-    
-    print_status "Searching for types in: $src_dir"
-    
-    # Check if source directory actually contains C# files
-    if ! find "$src_dir" -name "*.cs" -type f | head -1 >/dev/null 2>&1; then
-        print_warning "No C# files found in source directory: $src_dir"
-        return 1
-    fi
-    
-    local mappings=()
-    local types_output
-    types_output=$(discover_types "$src_dir")
-    
-    if [[ -n "$types_output" ]]; then
-        while IFS= read -r line; do
-            [[ -n "$line" ]] && mappings+=("$line")
-        done <<< "$types_output"
-    fi
-    
-    print_status "Found ${#mappings[@]} types"
-    
-    if [[ ${#mappings[@]} -gt 0 ]]; then
-        printf '%s\n' "${mappings[@]}"
-    else
-        [[ "$VERBOSE" == true ]] && print_warning "No types discovered from source code"
-        return 1
-    fi
-}
-
-# Convert type links in a single markdown file
-convert_type_links_in_file() {
-    local file="$1"
-    shift
-    local mappings=("$@")
-    
-    [[ "$VERBOSE" == true ]] && print_status "Processing: $file"
-    
-    # Validate file exists and is readable
-    if [[ ! -f "$file" ]]; then
-        [[ "$VERBOSE" == true ]] && print_warning "File not found: $file"
-        return 1
-    fi
-    
-    if [[ ! -r "$file" ]]; then
-        [[ "$VERBOSE" == true ]] && print_warning "File not readable: $file"
-        return 1
-    fi
-    
-    # Create backup for safety
-    if ! cp "$file" "${file}.bak"; then
-        [[ "$VERBOSE" == true ]] && print_warning "Failed to create backup for: $file"
-        return 1
-    fi
-    
-    # Process each type mapping
-    for mapping in "${mappings[@]}"; do
-        local type_name namespace base_api_url
-        IFS=':' read -r type_name namespace <<< "$mapping"
-        
-        [[ -z "$type_name" || -z "$namespace" ]] && continue
-        
-        base_api_url="../../api/${namespace}.${type_name}.html"
-        
-        # Convert simple type references (e.g., `TypeName` -> [`TypeName`](url))
-        if grep -qF "\`${type_name}\`" "$file" 2>/dev/null && ! grep -qF "[\`${type_name}\`](" "$file" 2>/dev/null; then
-            if ! safe_sed "s|\`${type_name}\`|[\`${type_name}\`](${base_api_url})|g" "$file"; then
-                [[ "$VERBOSE" == true ]] && print_warning "Failed to process simple type: $type_name in $file"
-            fi
-        fi
-        
-        # Convert generic type references for specific patterns
-        if [[ "$type_name" =~ ^(ModelHandler|TableModel|TableColumnModel|.*Builder)$ ]]; then
-            if grep -qF "\`${type_name}<" "$file" 2>/dev/null && ! grep -qF "[\`${type_name}<" "$file" 2>/dev/null; then
-                if command -v perl >/dev/null 2>&1; then
-                    if ! perl -i -pe "
-                        s|\`${type_name}<([^>]+)>\`|
-                            my \$type_params = \$1;
-                            my \$param_count = (\$type_params =~ tr/,/,/) + 1;
-                            \"[\\\`${type_name}<\$type_params>\\\`](../../api/${namespace}.${type_name}-\$param_count.html)\"
-                        |gex" "$file" 2>/dev/null; then
-                        [[ "$VERBOSE" == true ]] && print_warning "Failed to process generic type: $type_name in $file"
-                    fi
-                else
-                    [[ "$VERBOSE" == true ]] && print_warning "Perl not available - skipping generic type processing for $type_name"
-                fi
-            fi
-        fi
-    done
-    
-    # Check if file was modified and provide feedback
-    if ! cmp -s "$file" "${file}.bak" 2>/dev/null; then
-        [[ "$VERBOSE" == true ]] && print_success "  ✓ Updated: $file"
-        rm -f "${file}.bak" 2>/dev/null || true
-        return 0
-    else
-        [[ "$VERBOSE" == true ]] && print_status "  - No changes needed: $file"
-        mv "${file}.bak" "$file" 2>/dev/null || cp "${file}.bak" "$file"
-        rm -f "${file}.bak" 2>/dev/null || true
-        return 1
-    fi
-}
-
-# Process all markdown files for type link conversion
-convert_type_links() {
-    print_status "Step 1: Converting type mentions to API documentation links..."
-    
-    # Build dynamic type mappings from source code
-    local mappings=()
-    local mappings_output
-    
-    # Temporarily disable exit on error for type discovery
-    set +e
-    mappings_output=$(build_type_mappings "$SCRIPT_DIR")
-    local discovery_result=$?
-    set -e
-    
-    if [[ $discovery_result -eq 0 && -n "$mappings_output" ]]; then
-        while IFS= read -r line; do
-            [[ -n "$line" ]] && mappings+=("$line")
-        done <<< "$mappings_output"
-    fi
-    
-    if [[ ${#mappings[@]} -eq 0 ]]; then
-        print_warning "No types found in source code - skipping type link conversion"
-        print_status "Documentation will still be generated, but without automatic type linking"
-        return 0
-    fi
-    
-    print_status "Found ${#mappings[@]} types to process"
-    
-    # Process all markdown files (excluding API directory)
-    local files_processed=0
-    local files_modified=0
-    
-    # Find markdown files and process them
-    local md_files=()
-    while IFS= read -r -d '' file; do
-        md_files+=("$file")
-    done < <(find "$SCRIPT_DIR" -name "*.md" -type f ! -path "*/api/*" -print0)
-    
-    [[ "$VERBOSE" == true ]] && print_status "Found ${#md_files[@]} markdown files to process"
-    
-    # Debug: show the types we found
-    if [[ "$VERBOSE" == true ]]; then
-        print_status "Types found:"
-        for mapping in "${mappings[@]}"; do
-            echo "  - $mapping"
-        done
-    fi
-    
-    for file in "${md_files[@]}"; do
-        if [[ -f "$file" ]]; then
-            [[ "$VERBOSE" == true ]] && print_status "Processing file: $file"
-            # Pass mappings as separate arguments, handle return code explicitly
-            set +e  # Temporarily disable exit on error
-            convert_type_links_in_file "$file" "${mappings[@]}"
-            local result=$?
-            set -e  # Re-enable exit on error
-            
-            if [[ $result -eq 0 ]]; then
-                ((files_modified++))
-                [[ "$VERBOSE" == true ]] && print_status "File was modified"
-            else
-                [[ "$VERBOSE" == true ]] && print_status "File was not modified or had issues"
-            fi
-            ((files_processed++))
-        else
-            [[ "$VERBOSE" == true ]] && print_warning "Skipping non-existent file: $file"
-        fi
-    done
-    
-    print_status "Processed $files_processed markdown files, modified $files_modified"
-    print_success "Type link conversion completed"
-    echo ""
 }
 
 # ============================================================================
@@ -485,7 +186,7 @@ cleanup_docfx_server() {
 
 # Generate documentation using DocFX
 generate_documentation() {
-    print_status "Step 2: Generating documentation with DocFX..."
+    print_status "Generating documentation with DocFX..."
     
     local docfx_cmd
     docfx_cmd=$(build_docfx_command)
@@ -547,9 +248,6 @@ main() {
     
     # Clean previous build artifacts
     clean_output_directories
-    
-    # Convert type mentions to API documentation links
-    convert_type_links
     
     # Generate documentation with DocFX
     generate_documentation

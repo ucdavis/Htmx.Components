@@ -21,19 +21,19 @@ jobs:
     - name: Setup DocFX
       run: dotnet tool install -g docfx --version 2.78.3
     
-    - name: Install cross-platform dependencies
+    - name: Clean output directories
       run: |
-        # Install perl for cross-platform regex processing
-        sudo apt-get update
-        sudo apt-get install -y perl
-    
-    - name: Make generate-docs.sh executable
-      run: chmod +x docs/generate-docs.sh
+        cd docs
+        rm -rf _site
+        find api -type f \( -name '*.yml' -o -name '.manifest' \) -delete 2>/dev/null || true
     
     - name: Build Documentation
       run: |
         cd docs
-        ./generate-docs.sh --verbose
+        # Run DocFX with --warningsAsErrors to fail the build if there are any warnings
+        echo "🔨 Building documentation with DocFX..."
+        docfx docfx.json --logLevel Verbose --warningsAsErrors
+        echo "✅ Documentation built successfully with no warnings"
     
     - name: Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3

@@ -15,8 +15,7 @@ The documentation system uses DocFX to generate API documentation from C# code c
 
 - **`docfx.json`**: DocFX configuration file
 - **`generate-docs.sh`**: Cross-platform script that:
-  - Discovers C# types from source code
-  - Converts type mentions in markdown to API documentation links
+  - Cleans previous build artifacts
   - Generates documentation using DocFX
 - **`articles/`**: Manual documentation articles
 - **`api/`**: Auto-generated API documentation (generated at build time)
@@ -27,8 +26,8 @@ The documentation system uses DocFX to generate API documentation from C# code c
 The `.github/workflows/docs.yml` workflow:
 1. Runs on every push to main and on pull requests
 2. Sets up .NET and DocFX
-3. Installs cross-platform dependencies (perl)
-4. Runs the `generate-docs.sh` script
+3. Cleans previous build artifacts
+4. Runs DocFX directly with `--warningsAsErrors` to ensure high quality documentation
 5. Deploys the generated site to GitHub Pages (main branch only)
 
 ## Local Development
@@ -37,21 +36,12 @@ The `.github/workflows/docs.yml` workflow:
 
 - .NET 8.0 SDK
 - DocFX (installed via `dotnet tool install -g docfx`)
-- Perl (for advanced regex processing - **optional but recommended**)
-
-#### Perl Installation by Platform:
-
-- **macOS**: Comes pre-installed
-- **Linux/Ubuntu**: Usually pre-installed, or `sudo apt-get install perl`
-- **Windows**: 
-  - **Git Bash**: May or may not be available
-  - **Recommended**: Install [Strawberry Perl](https://strawberryperl.com/) or use WSL
-  - **Alternative**: Use PowerShell or CMD with Windows Subsystem for Linux (WSL)
-
-**Note**: The script works without Perl, but generic type link conversion will be limited.
 
 ### Generate Documentation Locally
 
+You can generate documentation using either the provided script or DocFX directly:
+
+**Using the script (recommended for local development):**
 ```bash
 # Navigate to the docs directory
 cd docs
@@ -72,6 +62,22 @@ chmod +x generate-docs.sh
 ./generate-docs.sh --metadata-only
 ```
 
+**Using DocFX directly (same as CI/CD):**
+```bash
+# Navigate to the docs directory
+cd docs
+
+# Clean output directories
+rm -rf _site
+find api -type f \( -name '*.yml' -o -name '.manifest' \) -delete 2>/dev/null || true
+
+# Generate documentation with warnings as errors
+docfx docfx.json --logLevel Verbose --warningsAsErrors
+
+# Or generate and serve locally
+docfx docfx.json --serve
+```
+
 ### Cross-Platform Compatibility
 
 The `generate-docs.sh` script is designed to work on:
@@ -80,9 +86,7 @@ The `generate-docs.sh` script is designed to work on:
 - **Windows**: Git Bash environment
 
 The script includes cross-platform compatibility features:
-- Safe sed operations that work with both GNU sed (Linux) and BSD sed (macOS)
 - Cross-platform process cleanup for server mode
-- Perl dependency for complex regex operations
 
 ## Adding Documentation
 
@@ -124,26 +128,19 @@ To reference C# types in your documentation, use DocFX cross-references instead 
 - ✅ Automatically resolves to correct URLs
 - ✅ DocFX validates that the referenced types exist
 - ✅ Works with generic types properly
+- ✅ CI/CD builds fail if any cross-references are invalid (using `--warningsAsErrors`)
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **"DocFX not found"**: Install DocFX with `dotnet tool install -g docfx`
-2. **"Perl not found"**: Install perl on your system (comes with most Unix systems, available via Git Bash on Windows)
-3. **"No types found"**: Ensure the source directory structure is correct (src/ folder with .cs files)
-4. **Permission denied on script**: Run `chmod +x generate-docs.sh`
+2. **Permission denied on script**: Run `chmod +x generate-docs.sh`
 
 ### Windows/Git Bash Issues
 
 If running on Windows with Git Bash:
 - Ensure Git Bash is running as administrator if you encounter permission issues
-- **Perl dependency**: Git Bash may not include Perl. Options:
-  - Install [Strawberry Perl](https://strawberryperl.com/) and ensure it's in your PATH
-  - Use Windows Subsystem for Linux (WSL) for full Unix compatibility
-  - Use PowerShell instead of Git Bash
-- The script will work without Perl but with limited generic type processing
-- For full functionality, consider using WSL or installing a complete Perl environment
 
 ### GitHub Pages Not Updating
 
