@@ -8,14 +8,20 @@ variables:
   solution: "**/*.sln"
   buildPlatform: "Any CPU"
   buildConfiguration: "Release"
+  nodeVersion: "22.x"
   majorVersion: 1
-  minorVersion: 0
+  minorVersion: 1
   patchVersion: $[counter(format('{0}.{1}', variables['majorVersion'], variables['minorVersion']), 0)]
   version: $(majorVersion).$(minorVersion).$(patchVersion)
 
 name: $(version)
 
 steps:
+  - task: NodeTool@0
+    displayName: "Use Node.js $(nodeVersion)"
+    inputs:
+      versionSpec: "$(nodeVersion)"
+
   - task: UseDotNet@2
     inputs:
       packageType: "sdk"

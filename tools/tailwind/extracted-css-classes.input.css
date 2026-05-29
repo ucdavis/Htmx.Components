@@ -1,0 +1,6 @@
+@import "tailwindcss" source(none);
+@import "./extracted-css-classes.css";
+@plugin "daisyui";
+
+@source "../../src/**/*.cshtml";
+@source "../../src/**/*.cs";

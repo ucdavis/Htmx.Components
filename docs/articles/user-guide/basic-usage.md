@@ -70,7 +70,7 @@ Create a `Tools` directory in your project root with the following files:
 @import "tailwindcss" source(none);
 @source "../Views/**/*.{html,cshtml}";
 @source "../wwwroot/**/*.{html,cshtml}";
-@source "../../Htmx.Components/content/extracted-css-classes.txt";
+@import "../../Htmx.Components/content/extracted-css-classes.css";
 @plugin "daisyui";
 ```
 

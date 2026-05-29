@@ -243,6 +243,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 package-lock.json
+!package-lock.json
 yarn.lock
 pnpm-lock.yaml
 .npm/
@@ -273,3 +274,5 @@ Thumbs.db
 
 # Generated CSS classes file
 content/extracted-css-classes.txt
+content/extracted-css-classes.css
+content/extracted-css-classes.generated.css

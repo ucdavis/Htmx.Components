@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "build:css": "tailwindcss -i ./tools/tailwind/extracted-css-classes.input.css -o ./content/extracted-css-classes.generated.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.1.10",
+    "daisyui": "5.0.46",
+    "tailwindcss": "4.1.10"
+  }
+}

@@ -32,12 +32,25 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <HtmxComponentsCssInput>tools/tailwind/extracted-css-classes.input.css</HtmxComponentsCssInput>
+    <HtmxComponentsTailwindSource>tools/tailwind/extracted-css-classes.css</HtmxComponentsTailwindSource>
+    <HtmxComponentsCssOutput>content/extracted-css-classes.generated.css</HtmxComponentsCssOutput>
+    <HtmxComponentsNpmInstallStamp>node_modules/.install-stamp</HtmxComponentsNpmInstallStamp>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
+    <Content Remove="content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
+  </ItemGroup>
+
   <!-- Include package files -->
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="LICENSE" Pack="true" PackagePath="\" />
     <None Include="docs/images/logo.png" Pack="true" PackagePath="logo.png" />
-    <None Include="content/css-extractor-patterns.txt" Pack="true" PackagePath="content/css-extractor-patterns.txt" />
+    <None Update="content/extracted-css-classes.txt" Pack="false" />
+    <None Include="$(HtmxComponentsTailwindSource)" Pack="true" PackagePath="content/extracted-css-classes.css" />
   </ItemGroup>
 
   <ItemGroup>
@@ -64,11 +77,21 @@
     <EmbeddedResource Include="src/**/*.cshtml" />
   </ItemGroup>
 
-  <!-- CSS Extraction -->
-  <ItemGroup>
-    <PackageReference Include="CssExtractor.MSBuild" Version="1.7.4">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+  <Target Name="HtmxComponentsNpmInstall"
+          Inputs="package-lock.json"
+          Outputs="$(HtmxComponentsNpmInstallStamp)"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm install" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Touch Files="$(HtmxComponentsNpmInstallStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="HtmxComponentsBuildCss"
+          DependsOnTargets="HtmxComponentsNpmInstall"
+          BeforeTargets="Build;Pack"
+          Inputs="$(HtmxComponentsCssInput);$(HtmxComponentsTailwindSource);package.json;package-lock.json;@(EmbeddedResource);@(Compile)"
+          Outputs="$(HtmxComponentsCssOutput)"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm run build:css" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
 
 </Project>
