@@ -10,7 +10,7 @@ This document outlines the key architectural and design decisions made in Htmx.C
 4. [Encrypted Client-Side State Management](#encrypted-client-side-state-management)
 5. [Result Filter-Based HTMX Integration](#result-filter-based-htmx-integration)
 6. [Dual Navigation Provider Architecture](#dual-navigation-provider-architecture)
-7. [CSS Class Extraction System](#css-class-extraction-system)
+7. [Packaged Component CSS Source](#packaged-component-css-source)
 8. [Authorization Integration Strategy](#authorization-integration-strategy)
 9. [ViewComponent-Centric Design](#viewcomponent-centric-design)
 
