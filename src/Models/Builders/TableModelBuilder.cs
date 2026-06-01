@@ -7,6 +7,7 @@ using Htmx.Components.Services;
 using Humanizer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Htmx.Components.Models.Builders;
 
@@ -20,6 +21,7 @@ public class TableModelBuilder<T, TKey> : BuilderBase<TableModelBuilder<T, TKey>
     where T : class
 {
     private readonly TableModelConfig<T, TKey> _config = new();
+    private readonly ViewPaths _viewPaths;
 
     internal TableModelBuilder(Expression<Func<T, TKey>> keySelector, ModelHandler<T, TKey> modelHandler, IServiceProvider serviceProvider)
         : base(serviceProvider)
@@ -27,6 +29,7 @@ public class TableModelBuilder<T, TKey> : BuilderBase<TableModelBuilder<T, TKey>
         _config.KeySelector = keySelector;
         _config.ModelHandler = modelHandler;
         _config.TypeId = modelHandler.TypeId;
+        _viewPaths = serviceProvider.GetRequiredService<ViewPaths>();
     }
 
 
@@ -43,13 +46,17 @@ public class TableModelBuilder<T, TKey> : BuilderBase<TableModelBuilder<T, TKey>
         {
             var propertyName = selector.GetPropertyName();
             var header = propertyName.Humanize(LetterCasing.Title);
+            var filterPartialView = selector.GetMemberType() == typeof(bool)
+                ? _viewPaths.Table.FilterBoolean
+                : null;
             var config = new TableColumnModelConfig<T, TKey>
             {
                 Display = new TableColumnDisplayOptions
                 {
                     Header = header,
                     DataName = propertyName,
-                    ColumnType = ColumnType.ValueSelector
+                    ColumnType = ColumnType.ValueSelector,
+                    FilterPartialView = filterPartialView
                 },
                 DataOptions = new TableColumnDataOptions<T, TKey>
                 {

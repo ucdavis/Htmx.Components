@@ -39,6 +39,11 @@ public class TableViewPaths
     /// Gets or sets the view path for text filter controls.
     /// </summary>
     public string FilterText { get; set; } = "_TableFilterText";
+
+    /// <summary>
+    /// Gets or sets the view path for boolean filter controls.
+    /// </summary>
+    public string FilterBoolean { get; set; } = "_TableFilterBoolean";
     
     /// <summary>
     /// Gets or sets the view path for table headers.

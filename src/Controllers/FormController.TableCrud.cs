@@ -40,15 +40,15 @@ public partial class FormController
     private async Task<IActionResult> SaveImpl<T, TKey>(ModelHandler<T, TKey> modelHandler)
         where T : class
     {
-        if (modelHandler.CreateModel == null)
-            return BadRequest($"SaveModel not defined for type '{modelHandler.TypeId}'.");
-
         var pageState = this.GetPageState();
         var editingItem = pageState.Get<T>(FormStateKeys.Partition, FormStateKeys.EditingItem)!;
         var editingExistingRecord = pageState.Get<bool>(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord)!;
         var tableModel = await modelHandler.BuildTableModelAsync();
         if (editingExistingRecord)
         {
+            if (modelHandler.UpdateModel == null)
+                return BadRequest($"UpdateModel not defined for type '{modelHandler.TypeId}'.");
+
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Update))
                 return Forbid();
             var result = await modelHandler.UpdateModel!(editingItem);
@@ -67,6 +67,9 @@ public partial class FormController
         }
         else
         {
+            if (modelHandler.CreateModel == null)
+                return BadRequest($"CreateModel not defined for type '{modelHandler.TypeId}'.");
+
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Create))
                 return Forbid();
             var result = await modelHandler.CreateModel!(editingItem);

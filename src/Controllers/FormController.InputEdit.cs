@@ -79,7 +79,7 @@ public partial class FormController
     /// <param name="value">The new string value to set for the property</param>
     /// <returns>An action result indicating success or failure of the value update</returns>
     [HttpPost("{typeId}/{modelUI}/SetValue")]
-    public async Task<IActionResult> SetValue(string typeId, ModelUI modelUI, string propertyName, string value)
+    public async Task<IActionResult> SetValue(string typeId, ModelUI modelUI, string propertyName, string? value)
     {
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
         if (modelHandler == null)
@@ -89,11 +89,11 @@ public partial class FormController
             this,
             nameof(SetValueImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            propertyName, value, modelHandler);
+            propertyName, value ?? string.Empty, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> SetValueImpl<T, TKey>(string propertyName, string value, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> SetValueImpl<T, TKey>(string propertyName, string? value, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         var pageState = this.GetPageState();
@@ -117,7 +117,7 @@ public partial class FormController
 
         try
         {
-            var convertedValue = Convert.ChangeType(value, property.PropertyType);
+            var convertedValue = ConvertSubmittedValue(value, property.PropertyType);
             property.SetValue(editingItem, convertedValue);
         }
         catch (Exception ex)
@@ -128,6 +128,34 @@ public partial class FormController
         pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingItem, editingItem);
         // We return a MultiSwapViewResult to allow the PageState to piggyback on the response
         return new MultiSwapViewResult();
+    }
+
+    private static object? ConvertSubmittedValue(string? value, Type propertyType)
+    {
+        var targetType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+
+        if (Nullable.GetUnderlyingType(propertyType) != null && string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (targetType == typeof(bool))
+        {
+            return value?.Trim().ToLowerInvariant() switch
+            {
+                null or "" or "undefined" => false,
+                "true" or "on" or "1" => true,
+                "false" or "off" or "0" => false,
+                _ => bool.Parse(value!)
+            };
+        }
+
+        if (targetType.IsEnum)
+        {
+            return Enum.Parse(targetType, value ?? string.Empty, ignoreCase: true);
+        }
+
+        return Convert.ChangeType(value, targetType);
     }
 
     /// <summary>

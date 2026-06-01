@@ -149,7 +149,7 @@ public class InputModelBuilder<T, TProp> : BuilderBase<InputModelBuilder<T, TPro
         return await base.BuildAsync();
     }
 
-    private static InputKind GetInputKind(Type type)
+    internal static InputKind GetInputKind(Type type)
     {
         var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
         return underlyingType switch

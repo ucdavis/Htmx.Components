@@ -4,6 +4,7 @@ using Htmx.Components.Extensions;
 using Htmx.Components.Models;
 using Htmx.Components.Table.Models;
 using Htmx.Components.Services;
+using Humanizer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -44,30 +45,65 @@ public class TableColumnModelBuilder<T, TKey> : BuilderBase<TableColumnModelBuil
     /// <summary>
     /// Configures whether this column supports inline editing.
     /// When enabled, clicking on cells in this column will display input controls for editing.
-    /// Requires that an input model builder is registered for this column's property.
+    /// Uses a registered input model builder for this column's property when one exists;
+    /// selector columns without an explicit input model use a default input inferred from the property type.
     /// </summary>
     /// <param name="isEditable">True to enable inline editing, false to disable it</param>
     /// <returns>The current builder instance for method chaining</returns>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when no input model builder is found for this column's property
+    /// Thrown when no input model builder can be found or inferred for this column's property
     /// </exception>
     public TableColumnModelBuilder<T, TKey> WithEditable(bool isEditable = true)
     {
-        if (!(_config.DataOptions.ModelHandler?.InputModelBuilders?.TryGetValue(_config.Display.DataName, out var inputModelBuilder) == true))
-        {
-            throw new InvalidOperationException($"No input model builder found for column '{_config.Display.DataName}'. Ensure that the input model is registered in the ModelHandler.");
-        }
         _config.Behavior.IsEditable = isEditable;
-        if (isEditable)
+        if (!isEditable)
         {
-            _config.InputOptions.GetInputModel = async (rowContext) =>
-            {
-                var inputModel = await inputModelBuilder.Invoke(rowContext.ModelHandler);
-                inputModel.ObjectValue = _config.DataOptions.SelectorFunc!(rowContext.Item);
-                return inputModel;
-            };
+            _config.InputOptions.GetInputModel = null;
+            return this;
         }
+
+        var inputModelBuilder = GetInputModelBuilder();
+        _config.InputOptions.GetInputModel = async (rowContext) =>
+        {
+            var inputModel = await inputModelBuilder.Invoke(rowContext.ModelHandler);
+            inputModel.ObjectValue = _config.DataOptions.SelectorFunc!(rowContext.Item);
+            return inputModel;
+        };
         return this;
+    }
+
+    private Func<ModelHandler<T, TKey>, Task<IInputModel>> GetInputModelBuilder()
+    {
+        if (_config.DataOptions.ModelHandler?.InputModelBuilders?.TryGetValue(_config.Display.DataName, out var inputModelBuilder) == true)
+        {
+            return inputModelBuilder;
+        }
+
+        if (_config.Display.ColumnType == ColumnType.ValueSelector
+            && _config.DataOptions.SelectorExpression != null
+            && !string.IsNullOrWhiteSpace(_config.Display.DataName))
+        {
+            return BuildDefaultInputModelAsync;
+        }
+
+        throw new InvalidOperationException($"No input model builder found for column '{_config.Display.DataName}'. Ensure that the input model is registered in the ModelHandler.");
+    }
+
+    private Task<IInputModel> BuildDefaultInputModelAsync(ModelHandler<T, TKey> modelHandler)
+    {
+        var propName = _config.Display.DataName;
+        var memberType = _config.DataOptions.SelectorExpression!.GetMemberType();
+        var inputModel = new InputModel<T, object>(new InputModelConfig<T, object>
+        {
+            PropName = propName,
+            Id = propName.SanitizeForHtmlId(),
+            ModelHandler = modelHandler,
+            TypeId = modelHandler.TypeId,
+            Label = propName.Humanize(LetterCasing.Title),
+            Kind = InputModelBuilder<T, object>.GetInputKind(memberType)
+        });
+
+        return Task.FromResult<IInputModel>(inputModel);
     }
 
     /// <summary>
@@ -214,5 +250,3 @@ public class TableColumnModelBuilder<T, TKey> : BuilderBase<TableColumnModelBuil
         return Task.FromResult(model);
     }
 }
-
-

@@ -24,9 +24,9 @@
         }
         case InputKind.Checkbox:
         {
-            <input name="value" id="@(id)" type="checkbox"
+            <input name="value" id="@(id)" type="checkbox" value="true"
             class="checkbox checkbox-primary" @(Model.ObjectValue != null && (bool)Model.ObjectValue ? "checked" : "") 
-            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='{"propertyName": "@Model.PropName"}' />
+            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="change" hx-vals='{"propertyName": "@Model.PropName"}' />
             break;
         }
         case InputKind.Radio:

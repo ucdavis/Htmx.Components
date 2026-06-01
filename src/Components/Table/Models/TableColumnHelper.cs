@@ -184,8 +184,17 @@ public static class TableColumnHelper
                     }
                     break;
                 default:
+                    if (operands.Count == 0 && propertyType != typeof(string))
+                    {
+                        var parsedValue = ParseValue(filter.Trim(), propertyType);
+                        if (parsedValue != null)
+                        {
+                            dynamicQuery = $"{propertyName} == @0";
+                            values = [parsedValue];
+                        }
+                    }
                     // Fallback: treat as "contains" for string columns
-                    if (propertyType == typeof(string))
+                    else if (propertyType == typeof(string))
                     {
                         dynamicQuery = $"{propertyName} != null && {propertyName}.Contains(@0)";
                         values = [ParseValue(filter.Trim(), propertyType)];

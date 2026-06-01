@@ -64,6 +64,12 @@ public abstract class OobResultFilterBase<T> : IAsyncResultFilter
                 || context.Result is MultiSwapViewResult
                 || context.Result is OkResult))
             {
+                if (context.Result is ObjectResult { StatusCode: >= 400 })
+                {
+                    await next();
+                    return;
+                }
+
                 if (context.HttpContext.Request.IsHtmx())
                 {
                     MultiSwapViewResult multiSwapViewResult = null!;
