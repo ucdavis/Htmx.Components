@@ -68,7 +68,7 @@ public class AdminController : Controller
 
 ## 💻 Requirements
 
-- .NET 8.0+
+- .NET 10.0+
 - ASP.NET Core
 - HTMX 2.0+
 

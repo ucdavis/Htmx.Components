@@ -4,7 +4,7 @@ This guide will help you set up HTMX Components in your ASP.NET Core application
 
 ## Prerequisites
 
-- .NET 8.0 or later
+- .NET 10.0 or later
 - ASP.NET Core application
 - Basic familiarity with HTMX concepts
 
@@ -222,4 +222,3 @@ Create the corresponding view (`Views/Users/Index.cshtml`):
 - [Configure table features](user-guide/tables.md)
 - [Implement authentication](user-guide/authentication.md)
 - [Set up authorization](user-guide/authorization.md)
-
