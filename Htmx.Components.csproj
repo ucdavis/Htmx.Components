@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**;tests/**;docs/_site/**</DefaultItemExcludes>
 
     <!-- NuGet Package Metadata -->
     <PackageId>Htmx.Components</PackageId>
@@ -40,8 +41,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
-    <Content Remove="content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
+    <None Remove="bin/**;obj/**;tests/**;docs/_site/**;content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
+    <Content Remove="bin/**;obj/**;tests/**;docs/_site/**;content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
     <Compile Remove="tests/**" />
     <EmbeddedResource Remove="tests/**" />
     <None Remove="tests/**" />

@@ -3,8 +3,8 @@
 @inject Htmx.Components.Models.ViewPaths ViewPaths
 @model ITableModel
 
-<div id="@Model.ComponentId" data-hc-table-component="@Model.ComponentId" class="htmx-table-component flex-1 flex flex-col min-h-0">
-    <div id="@TableComponentIdentity.ContainerId(Model)" class="relative flex-1 flex flex-col min-h-0">
+<htmx-table id="@Model.ComponentId" data-hc-table-component="@Model.ComponentId" class="htmx-table-component flex-1 flex flex-col min-h-0">
+    <htmx-request-scope id="@TableComponentIdentity.ContainerId(Model)" class="relative flex-1 flex flex-col min-h-0">
         @await Html.PartialAsync(ViewPaths.Table.EditClassToggle, Model)
         @await Html.PartialAsync(ViewPaths.Table.TableActionList, Model)
         <table class="table w-full">
@@ -31,8 +31,9 @@
             </thead>
             @await Html.PartialAsync(ViewPaths.Table.Body, Model)
         </table>
-    </div>
+    </htmx-request-scope>
+    <htmx-error-region data-hc-error-region class="alert alert-error my-2" hidden></htmx-error-region>
     <div class="sticky bottom-[4rem] bg-base-100 z-10">
         @await Html.PartialAsync(ViewPaths.Table.Pagination, Model)
     </div>
-</div>
+</htmx-table>

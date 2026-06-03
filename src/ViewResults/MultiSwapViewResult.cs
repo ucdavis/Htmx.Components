@@ -193,7 +193,7 @@ public class MultiSwapViewResult : IActionResult
     private static string AddHxSwapToOuterElement(string html, HtmxViewInfo htmxViewInfo)
     {
         // Use a regex to identify the outermost tag and add hx-swap-oob="true" to it
-        var regex = new Regex(@"<(\w+)([^>]*)>");
+        var regex = new Regex(@"<([a-zA-Z][\w-]*)([^>]*)>");
         var match = regex.Match(html);
 
         var targetDisposition = htmxViewInfo.TargetDisposition switch
