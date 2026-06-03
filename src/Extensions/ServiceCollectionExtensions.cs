@@ -16,10 +16,8 @@ using Htmx.Components.Table.Internal;
 using Htmx.Components.ViewResults;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Htmx.Components;
 
@@ -36,7 +34,6 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddHtmxComponents(this IServiceCollection services, Action<HtmxComponentOptions>? configure = null)
     {
-        services.AddSafeActionContextAccessor(nameof(AddHtmxComponents));
         services.AddHttpContextAccessor();
         services.Configure<RazorViewEngineOptions>(options =>
         {
@@ -82,26 +79,13 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Registers IActionContextAccessor safely before MVC infrastructure.
+    /// Registers the HTTP context accessor used to create action contexts from endpoint routing metadata.
     /// </summary>
+    [Obsolete("IActionContextAccessor is obsolete in ASP.NET Core 10. Use services.AddHttpContextAccessor() and IHttpContextAccessor with GetValidActionContext() instead.", DiagnosticId = "ASPDEPR006", UrlFormat = "https://aka.ms/aspnet/deprecate/006")]
     public static IServiceCollection AddSafeActionContextAccessor(this IServiceCollection services,
         string extensionMethodName = nameof(AddSafeActionContextAccessor))
     {
-        bool mvcAlreadyRegistered = services.Any(sd =>
-            sd.ServiceType.FullName?.StartsWith("Microsoft.AspNetCore.Mvc.Infrastructure") == true ||
-            sd.ServiceType == typeof(Microsoft.AspNetCore.Mvc.Infrastructure.IActionInvokerFactory) ||
-            sd.ImplementationType?.FullName?.StartsWith("Microsoft.AspNetCore.Mvc") == true
-        );
-
-        if (mvcAlreadyRegistered)
-        {
-            throw new InvalidOperationException(
-                $"IActionContextAccessor must be registered before MVC. " +
-                $"Call {extensionMethodName}() before AddControllers() or AddMvc()."
-            );
-        }
-
-        services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
+        services.AddHttpContextAccessor();
         return services;
     }
 
@@ -134,7 +118,6 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddScoped<IPageState, PageState>();
-        services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         services.AddDataProtection();
         services.AddScoped<IAuthStatusProvider>(sp =>
             options.AuthStatusProviderFactory?.Invoke(sp) ?? new DefaultAuthStatusProvider());

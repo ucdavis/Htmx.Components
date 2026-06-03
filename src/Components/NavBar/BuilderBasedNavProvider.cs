@@ -1,7 +1,6 @@
 using Htmx.Components.Models;
 using Htmx.Components.Models.Builders;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace Htmx.Components.NavBar;
 
