@@ -23,6 +23,11 @@ public interface IInputModel
     ModelHandler ModelHandler { get; }
     
     /// <summary>
+    /// Gets or sets the table component id this input belongs to.
+    /// </summary>
+    string ComponentId { get; set; }
+    
+    /// <summary>
     /// Gets the display label for this input field.
     /// </summary>
     string? Label { get; }
@@ -76,6 +81,7 @@ public class InputModel<T, TProp> : IInputModel
         Id = config.Id;
         ModelHandler = config.ModelHandler;
         TypeId = config.TypeId;
+        ComponentId = config.ComponentId;
         Label = config.Label;
         Placeholder = config.Placeholder;
         CssClass = config.CssClass;
@@ -108,6 +114,11 @@ public class InputModel<T, TProp> : IInputModel
     /// Used to identify the model type in form submissions and routing.
     /// </summary>
     public string TypeId { get; set; } = typeof(T).Name;
+
+    /// <summary>
+    /// Gets or sets the table component id this input belongs to.
+    /// </summary>
+    public string ComponentId { get; set; } = "";
     
     /// <summary>
     /// Gets or sets the display label for this input.
@@ -254,6 +265,7 @@ internal class InputModelConfig<T, TProp>
     public string Id { get; set; } = "";
     public ModelHandler ModelHandler { get; set; } = null!;
     public string TypeId { get; set; } = typeof(T).Name;
+    public string ComponentId { get; set; } = "";
     public string Label { get; set; } = "";
     public string? Placeholder { get; set; }
     public string? CssClass { get; set; }

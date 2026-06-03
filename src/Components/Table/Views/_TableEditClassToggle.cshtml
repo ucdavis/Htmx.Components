@@ -1,8 +1,9 @@
 @using Htmx.Components.Table.Models
+@using Htmx.Components.Table
 @model ITableModel
 
 @{
     var isEditing = Model.Rows.Any(r => r.IsEditing);
 }
 
-<div id="table-edit-class-toggle" class="@(isEditing ? "editing-mode" : "")"></div>
+<div id="@TableComponentIdentity.EditToggleId(Model)" data-hc-table-edit-toggle class="@(isEditing ? "editing-mode" : "")"></div>

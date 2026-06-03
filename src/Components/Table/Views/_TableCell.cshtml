@@ -12,6 +12,7 @@
 @if (isEditing)
 {
     var inputModel = await Model.Column.GetInputModel(Model.Row);
+    inputModel.ComponentId = Model.Table.ComponentId;
     @await Html.PartialAsync(ViewPaths.Input, inputModel)
 }
 else

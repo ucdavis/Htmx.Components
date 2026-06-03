@@ -58,8 +58,6 @@ public interface ITableProvider
 /// </remarks>
 public class TableProvider : ITableProvider
 {
-    private readonly IPageState _pageState;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="TableProvider"/> class.
     /// </summary>
@@ -67,7 +65,7 @@ public class TableProvider : ITableProvider
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="pageState"/> is null.</exception>
     public TableProvider(IPageState pageState)
     {
-        _pageState = pageState ?? throw new ArgumentNullException(nameof(pageState));
+        ArgumentNullException.ThrowIfNull(pageState);
     }
 
     /// <summary>

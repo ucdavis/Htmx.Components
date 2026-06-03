@@ -99,6 +99,7 @@ public class TableColumnModelBuilder<T, TKey> : BuilderBase<TableColumnModelBuil
             Id = propName.SanitizeForHtmlId(),
             ModelHandler = modelHandler,
             TypeId = modelHandler.TypeId,
+            ComponentId = "",
             Label = propName.Humanize(LetterCasing.Title),
             Kind = InputModelBuilder<T, object>.GetInputKind(memberType)
         });

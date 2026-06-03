@@ -1,6 +1,8 @@
 using Htmx.Components.Models;
+using Htmx.Components.State;
 using Htmx.Components.Table.Models;
 using Microsoft.AspNetCore.Mvc;
+using static Htmx.Components.State.PageStateConstants;
 
 namespace Htmx.Components.Table;
 
@@ -22,15 +24,18 @@ namespace Htmx.Components.Table;
 public class TableViewComponent : ViewComponent
 {
     private readonly ViewPaths _viewPaths;
+    private readonly IPageState _pageState;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TableViewComponent"/> class.
     /// </summary>
     /// <param name="viewPaths">The configured view paths for rendering table components.</param>
+    /// <param name="pageState">The page state service used to persist initial scoped table state.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="viewPaths"/> is null.</exception>
-    public TableViewComponent(ViewPaths viewPaths)
+    public TableViewComponent(ViewPaths viewPaths, IPageState pageState)
     {
         _viewPaths = viewPaths ?? throw new ArgumentNullException(nameof(viewPaths));
+        _pageState = pageState ?? throw new ArgumentNullException(nameof(pageState));
     }
 
     /// <summary>
@@ -47,7 +52,13 @@ public class TableViewComponent : ViewComponent
     public IViewComponentResult Invoke(ITableModel model)
     {
         if (model == null) throw new ArgumentNullException(nameof(model));
-        
+
+        model.ComponentId = TableComponentIdentity.Ensure(model.ComponentId);
+        _pageState.Set(
+            TableComponentIdentity.TableStatePartition(model.ComponentId),
+            TableStateKeys.TableState,
+            model.State);
+
         return View(_viewPaths.Table.Table, model);
     }
 }

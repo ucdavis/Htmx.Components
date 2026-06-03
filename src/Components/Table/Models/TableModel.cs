@@ -12,6 +12,11 @@ public interface ITableModel
     /// Gets or sets the unique type identifier for the table model.
     /// </summary>
     public string TypeId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the stable component instance identifier used for DOM and page-state scoping.
+    /// </summary>
+    public string ComponentId { get; set; }
     
     /// <summary>
     /// Gets or sets the collection of row contexts representing the table data.
@@ -57,6 +62,11 @@ public class TableModel<T, TKey> : ITableModel
     /// Gets or sets the unique type identifier for the table model.
     /// </summary>
     public string TypeId { get; set; } = typeof(T).Name;
+
+    /// <summary>
+    /// Gets or sets the stable component instance identifier used for DOM and page-state scoping.
+    /// </summary>
+    public string ComponentId { get; set; } = "";
     
     /// <summary>
     /// Gets or sets the collection of row contexts representing the table data.
@@ -97,6 +107,7 @@ public class TableModel<T, TKey> : ITableModel
     public TableModel(TableModelConfig<T, TKey> config)
     {
         TypeId = config.TypeId ?? typeof(T).Name;
+        ComponentId = config.ComponentId ?? "";
         Columns = config.Columns;
         ModelHandler = config.ModelHandler ?? throw new ArgumentNullException(nameof(config.ModelHandler));
         ActionsFactories = config.ActionsFactories;
@@ -152,6 +163,11 @@ public class TableModelConfig<T, TKey>
     /// Gets or sets the unique type identifier for the table model.
     /// </summary>
     public string? TypeId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the stable component instance identifier used for DOM and page-state scoping.
+    /// </summary>
+    public string? ComponentId { get; set; }
     
     /// <summary>
     /// Gets or sets the key selector expression for the entity.

@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Htmx.Components.Authorization;
 using Htmx.Components.Models;
 using Htmx.Components.State;
+using Htmx.Components.Table;
 using Htmx.Components.Table.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -109,32 +110,38 @@ internal sealed class StubView : IView
 
         if (viewName.Contains("TableBody", StringComparison.OrdinalIgnoreCase))
         {
-            return """<tbody id="table-body"><tr><td>row</td></tr></tbody>""";
+            var table = (ITableModel)model!;
+            return $"""<tbody id="{HtmlEncoder.Default.Encode(TableComponentIdentity.BodyId(table))}"><tr><td>row</td></tr></tbody>""";
         }
 
         if (viewName.Contains("TablePagination", StringComparison.OrdinalIgnoreCase))
         {
-            return """<div id="table-pagination">pagination</div>""";
+            var table = (ITableModel)model!;
+            return $"""<div id="{HtmlEncoder.Default.Encode(TableComponentIdentity.PaginationId(table))}">pagination</div>""";
         }
 
         if (viewName.Contains("TableHeader", StringComparison.OrdinalIgnoreCase))
         {
-            return """<thead id="table-header"><tr><th>Name</th></tr></thead>""";
+            var table = (ITableModel)model!;
+            return $"""<thead id="{HtmlEncoder.Default.Encode(TableComponentIdentity.HeaderId(table))}"><tr><th>Name</th></tr></thead>""";
         }
 
         if (viewName.Contains("TableActionList", StringComparison.OrdinalIgnoreCase))
         {
-            return """<div id="table-actions">actions</div>""";
+            var table = (ITableModel)model!;
+            return $"""<div id="{HtmlEncoder.Default.Encode(TableComponentIdentity.ActionListId(table))}">actions</div>""";
         }
 
         if (viewName.Contains("TableEditClassToggle", StringComparison.OrdinalIgnoreCase))
         {
-            return """<div id="table-container">edit</div>""";
+            var table = (ITableModel)model!;
+            return $"""<div id="{HtmlEncoder.Default.Encode(TableComponentIdentity.EditToggleId(table))}">edit</div>""";
         }
 
         if (viewName.Contains("Row", StringComparison.OrdinalIgnoreCase))
         {
-            return """<tr id="row_1"><td>row</td></tr>""";
+            var (table, row) = ((ITableModel table, ITableRowContext row))model!;
+            return $"""<tr id="{HtmlEncoder.Default.Encode(TableComponentIdentity.RowId(table, row))}"><td>row</td></tr>""";
         }
 
         return model is ITableModel tableModel

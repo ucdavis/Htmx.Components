@@ -21,11 +21,15 @@ public partial class FormController
     /// <param name="typeId">The identifier of the model type being edited</param>
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
     /// <param name="key">The unique key identifying the record to edit</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the edit form UI</returns>
     [HttpPost("{typeId}/{modelUI}/Edit")]
     [TableEditAction]
-    public async Task<IActionResult> Edit(string typeId, ModelUI modelUI, string key)
+    public async Task<IActionResult> Edit(string typeId, ModelUI modelUI, string key, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -34,11 +38,11 @@ public partial class FormController
             this,
             nameof(EditImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            key, modelHandler);
+            key, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> EditImpl<T, TKey>(string stringKey, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> EditImpl<T, TKey>(string stringKey, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
@@ -53,10 +57,12 @@ public partial class FormController
         if (editingItem == null)
             return BadRequest($"Model with key '{stringKey}' not found.");
         var pageState = this.GetPageState();
-        pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingItem, editingItem);
-        pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord, true);
+        var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        pageState.Set(formStatePartition, FormStateKeys.EditingItem, editingItem);
+        pageState.Set(formStatePartition, FormStateKeys.EditingExistingRecord, true);
 
         var tableModel = await modelHandler.BuildTableModelAsync();
+        tableModel.ComponentId = componentId;
         tableModel.Rows.Add(new TableRowContext<T, TKey>
         {
             Item = editingItem,
@@ -77,10 +83,14 @@ public partial class FormController
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
     /// <param name="propertyName">The name of the property to update</param>
     /// <param name="value">The new string value to set for the property</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result indicating success or failure of the value update</returns>
     [HttpPost("{typeId}/{modelUI}/SetValue")]
-    public async Task<IActionResult> SetValue(string typeId, ModelUI modelUI, string propertyName, string? value)
+    public async Task<IActionResult> SetValue(string typeId, ModelUI modelUI, string propertyName, string? value, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -89,15 +99,16 @@ public partial class FormController
             this,
             nameof(SetValueImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            propertyName, value ?? string.Empty, modelHandler);
+            propertyName, value ?? string.Empty, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> SetValueImpl<T, TKey>(string propertyName, string? value, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> SetValueImpl<T, TKey>(string propertyName, string? value, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         var pageState = this.GetPageState();
-        var editingExistingRecord = pageState.Get<bool>(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord)!;
+        var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        var editingExistingRecord = pageState.Get<bool>(formStatePartition, FormStateKeys.EditingExistingRecord)!;
         if (editingExistingRecord)
         {
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Update))
@@ -109,8 +120,7 @@ public partial class FormController
                 return Forbid();
         }
 
-        var tableState = pageState.GetOrCreate<TableState>(TableStateKeys.Partition, TableStateKeys.TableState, () => new());
-        var editingItem = pageState.Get<T>(FormStateKeys.Partition, FormStateKeys.EditingItem)!;
+        var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem)!;
         var property = typeof(T).GetProperty(propertyName);
         if (property == null)
             return BadRequest($"Property '{propertyName}' not found.");
@@ -125,7 +135,7 @@ public partial class FormController
             return BadRequest($"Failed to set property '{propertyName}': {ex.Message}");
         }
 
-        pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingItem, editingItem);
+        pageState.Set(formStatePartition, FormStateKeys.EditingItem, editingItem);
         // We return a MultiSwapViewResult to allow the PageState to piggyback on the response
         return new MultiSwapViewResult();
     }
@@ -166,10 +176,14 @@ public partial class FormController
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
     /// <param name="propertyName">The name of the property that changed</param>
     /// <param name="value">The new string value of the property</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result that may include UI updates based on the value change</returns>
     [HttpPost("{typeId}/{modelUI}/ValueChanged")]
-    public async Task<IActionResult> ValueChanged(string typeId, ModelUI modelUI, string propertyName, string value)
+    public async Task<IActionResult> ValueChanged(string typeId, ModelUI modelUI, string propertyName, string value, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -178,11 +192,11 @@ public partial class FormController
             this,
             nameof(ValueChangedImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            propertyName, value, modelHandler);
+            propertyName, value, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private Task<IActionResult> ValueChangedImpl<T, TKey>(string propertyName, string value,
+    private Task<IActionResult> ValueChangedImpl<T, TKey>(string propertyName, string value, string componentId,
         ModelHandler<T, TKey> modelHandler)
         where T : class
     {

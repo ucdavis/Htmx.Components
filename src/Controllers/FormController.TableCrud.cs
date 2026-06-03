@@ -19,11 +19,15 @@ public partial class FormController
     /// </summary>
     /// <param name="typeId">The identifier of the model type being saved</param>
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the updated table view or error information</returns>
     [HttpPost("{typeId}/{modelUI}/Save")]
     [TableEditAction]
-    public async Task<IActionResult> Save(string typeId, ModelUI modelUI)
+    public async Task<IActionResult> Save(string typeId, ModelUI modelUI, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -32,18 +36,20 @@ public partial class FormController
             this,
             nameof(SaveImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            modelHandler);
+            scopedComponentId, modelHandler);
 
         return result;
     }
 
-    private async Task<IActionResult> SaveImpl<T, TKey>(ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> SaveImpl<T, TKey>(string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         var pageState = this.GetPageState();
-        var editingItem = pageState.Get<T>(FormStateKeys.Partition, FormStateKeys.EditingItem)!;
-        var editingExistingRecord = pageState.Get<bool>(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord)!;
+        var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem)!;
+        var editingExistingRecord = pageState.Get<bool>(formStatePartition, FormStateKeys.EditingExistingRecord)!;
         var tableModel = await modelHandler.BuildTableModelAsync();
+        tableModel.ComponentId = componentId;
         if (editingExistingRecord)
         {
             if (modelHandler.UpdateModel == null)
@@ -91,12 +97,12 @@ public partial class FormController
                 ModelHandler = modelHandler,
                 Key = modelHandler.KeySelectorFunc(result.Value),
                 TargetDisposition = OobTargetDisposition.AfterBegin,
-                TargetSelector = "#table-body",
+                TargetSelector = TableComponentIdentity.BodySelector(componentId),
             });
         }
 
-        pageState.ClearKey(FormStateKeys.Partition, FormStateKeys.EditingItem);
-        pageState.ClearKey(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord);
+        pageState.ClearKey(formStatePartition, FormStateKeys.EditingItem);
+        pageState.ClearKey(formStatePartition, FormStateKeys.EditingExistingRecord);
 
         return Ok(tableModel);
     }
@@ -107,11 +113,15 @@ public partial class FormController
     /// </summary>
     /// <param name="typeId">The identifier of the model type being edited</param>
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the updated table view without the editing UI</returns>
     [HttpPost("{typeId}/{modelUI}/CancelEdit")]
     [TableEditAction]
-    public async Task<IActionResult> CancelEdit(string typeId, ModelUI modelUI)
+    public async Task<IActionResult> CancelEdit(string typeId, ModelUI modelUI, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -120,23 +130,25 @@ public partial class FormController
             this,
             nameof(CancelEditImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            modelHandler);
+            scopedComponentId, modelHandler);
 
         return result!;
     }
 
-    private async Task<IActionResult> CancelEditImpl<T, TKey>(ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> CancelEditImpl<T, TKey>(string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         var tableModel = await modelHandler.BuildTableModelAsync();
+        tableModel.ComponentId = componentId;
         var pageState = this.GetPageState();
-        if (pageState.Get<bool>(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord))
+        var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        if (pageState.Get<bool>(formStatePartition, FormStateKeys.EditingExistingRecord))
         {
             // Check if the user is authorized to read the item
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
                 return Forbid();
 
-            var editingItem = pageState.Get<T>(FormStateKeys.Partition, FormStateKeys.EditingItem)!;
+            var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem)!;
             var editingKey = modelHandler.KeySelectorFunc(editingItem);
 
             var originalItem = await modelHandler.GetQueryable!()
@@ -162,8 +174,8 @@ public partial class FormController
             });
         }
 
-        pageState.ClearKey(FormStateKeys.Partition, FormStateKeys.EditingItem);
-        pageState.ClearKey(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord);
+        pageState.ClearKey(formStatePartition, FormStateKeys.EditingItem);
+        pageState.ClearKey(formStatePartition, FormStateKeys.EditingExistingRecord);
         return Ok(tableModel);
     }
 
@@ -173,11 +185,15 @@ public partial class FormController
     /// </summary>
     /// <param name="typeId">The identifier of the model type to create</param>
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the creation form UI</returns>
     [HttpPost("{typeId}/{modelUI}/Create")]
     [TableEditAction]
-    public async Task<IActionResult> Create(string typeId, ModelUI modelUI)
+    public async Task<IActionResult> Create(string typeId, ModelUI modelUI, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -186,11 +202,11 @@ public partial class FormController
             this,
             nameof(CreateImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            modelHandler);
+            scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> CreateImpl<T, TKey>(ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> CreateImpl<T, TKey>(string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class, new()
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Create))
@@ -199,16 +215,18 @@ public partial class FormController
         var editingItem = new T();
 
         var pageState = this.GetPageState();
-        pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingItem, editingItem);
-        pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord, false);
+        var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        pageState.Set(formStatePartition, FormStateKeys.EditingItem, editingItem);
+        pageState.Set(formStatePartition, FormStateKeys.EditingExistingRecord, false);
 
         var tableModel = await modelHandler.BuildTableModelAsync();
+        tableModel.ComponentId = componentId;
         tableModel.Rows.Add(new TableRowContext<T, TKey>
         {
             Item = editingItem,
             ModelHandler = modelHandler,
             TargetDisposition = OobTargetDisposition.AfterBegin,
-            TargetSelector = "#table-body",
+            TargetSelector = TableComponentIdentity.BodySelector(componentId),
             StringKey = "new",
             IsEditing = true,
         });
@@ -223,11 +241,15 @@ public partial class FormController
     /// <param name="typeId">The identifier of the model type being deleted</param>
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
     /// <param name="key">The unique key identifying the record to delete</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result indicating success or failure of the deletion operation</returns>
     [HttpPost("{typeId}/{modelUI}/Delete")]
     [TableEditAction]
-    public async Task<IActionResult> Delete(string typeId, ModelUI modelUI, string key)
+    public async Task<IActionResult> Delete(string typeId, ModelUI modelUI, string key, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -236,11 +258,11 @@ public partial class FormController
             this,
             nameof(DeleteImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            key, modelHandler);
+            key, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> DeleteImpl<T, TKey>(string stringKey, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> DeleteImpl<T, TKey>(string stringKey, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         if (modelHandler.DeleteModel == null)
@@ -259,8 +281,8 @@ public partial class FormController
             return BadRequest(result.Message);
         }
 
-        var pageState = this.GetPageState();
         var tableModel = await modelHandler.BuildTableModelAsync();
+        tableModel.ComponentId = componentId;
         tableModel.Rows.Add(new TableRowContext<T, TKey>
         {
             Item = default!,

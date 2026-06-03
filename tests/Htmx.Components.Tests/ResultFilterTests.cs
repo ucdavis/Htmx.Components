@@ -2,6 +2,7 @@ using Htmx.Components.Filters;
 using Htmx.Components.Models;
 using Htmx.Components.Services;
 using Htmx.Components.State;
+using Htmx.Components.Table;
 using Htmx.Components.Table.Internal;
 using Htmx.Components.Table.Models;
 using Htmx.Components.ViewResults;
@@ -44,7 +45,8 @@ public class ResultFilterTests
         var handler = await registry.GetModelHandler<Widget, int>("Widget", ModelUI.Table);
         var tableModel = new TableModel<Widget, int>(new TableModelConfig<Widget, int>
         {
-            ModelHandler = handler
+            ModelHandler = handler,
+            ComponentId = "hc-table-alpha"
         });
         var context = CreateResultExecutingContext(new OkObjectResult(tableModel));
         context.HttpContext.Request.Headers["HX-Request"] = "true";
@@ -60,8 +62,43 @@ public class ResultFilterTests
         var multiSwap = Assert.IsType<MultiSwapViewResult>(context.Result);
         await multiSwap.ExecuteResultAsync(context);
         var body = await MultiSwapViewResultTests.ReadBodyAsync(context.HttpContext.Response);
-        Assert.Contains("id=\"table-body\" hx-swap-oob=\"outerHTML\"", body);
-        Assert.Contains("id=\"table-pagination\" hx-swap-oob=\"outerHTML\"", body);
+        Assert.Contains("id=\"hc-table-alpha-body\" hx-swap-oob=\"outerHTML\"", body);
+        Assert.Contains("id=\"hc-table-alpha-pagination\" hx-swap-oob=\"outerHTML\"", body);
+    }
+
+    [Fact]
+    public async Task TableComponentIdentity_ScopesStateDomTargetsAndActionValues()
+    {
+        await using var services = TestServices.CreateHtmxServices();
+        var registry = new ModelRegistry(
+            services,
+            services.GetRequiredService<Authorization.IResourceOperationRegistry>());
+        registry.Register<Widget, int>("Widget", (_, builder) => builder.WithKeySelector(widget => widget.Id));
+        var handler = await registry.GetModelHandler<Widget, int>("Widget", ModelUI.Table);
+        var first = TableComponentIdentity.Ensure("admin");
+        var second = TableComponentIdentity.Ensure("reports");
+
+        var firstTable = new TableModel<Widget, int>(new TableModelConfig<Widget, int>
+        {
+            ModelHandler = handler,
+            ComponentId = first
+        });
+        var secondTable = new TableModel<Widget, int>(new TableModelConfig<Widget, int>
+        {
+            ModelHandler = handler,
+            ComponentId = second
+        });
+        var row = new TableRowContext<Widget, int>
+        {
+            Item = new Widget { Id = 1, Name = "Alpha" },
+            ModelHandler = handler,
+            Key = 1
+        };
+
+        Assert.NotEqual(TableComponentIdentity.TableStatePartition(first), TableComponentIdentity.TableStatePartition(second));
+        Assert.NotEqual(TableComponentIdentity.BodyId(firstTable), TableComponentIdentity.BodyId(secondTable));
+        Assert.NotEqual(TableComponentIdentity.RowId(firstTable, row), TableComponentIdentity.RowId(secondTable, row));
+        Assert.Contains(first, TableComponentIdentity.HxVals(first));
     }
 
     private static ResultExecutingContext CreateResultExecutingContext(IActionResult result)
@@ -88,4 +125,5 @@ public class ResultFilterTests
         [TableRefreshAction]
         public IActionResult Refresh() => Ok();
     }
+
 }

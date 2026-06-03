@@ -2,17 +2,17 @@
 // Defines 'tableinline' extension and manages table editing mode visual states
 
 htmx.defineExtension('tableinline', {
-  // ensures afterbegin:#table-body inserts entire <tr> element and not just the innerHTML
+  // ensures afterbegin:#scoped-table-body inserts the entire <tr> element and not just the innerHTML
   isInlineSwap: function (swapStyle) { return true; },
 });
 
 document.addEventListener("htmx:afterSettle", () => {
-  // detects if table is in edit mode and disables all parts except the row being edited...
-  const toggle = document.getElementById("table-edit-class-toggle");
-  const wrapper = document.getElementById("table-container");
+  document.querySelectorAll("[data-hc-table-edit-toggle]").forEach((toggle) => {
+    const component = toggle.closest("[data-hc-table-component]");
 
-  if (toggle && wrapper) {
+    if (!component) return;
+
     const editing = toggle.classList.contains("editing-mode");
-    wrapper.classList.toggle("editing-mode", editing);
-  }
+    component.classList.toggle("editing-mode", editing);
+  });
 });

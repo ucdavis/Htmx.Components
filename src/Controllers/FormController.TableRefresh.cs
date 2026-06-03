@@ -17,11 +17,15 @@ public partial class FormController
     /// </summary>
     /// <param name="typeId">The identifier of the model type being paginated</param>
     /// <param name="page">The page number to navigate to (1-based)</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the updated table view for the specified page</returns>
     [HttpPost("{typeId}/SetPage")]
     [TableRefreshAction]
-    public async Task<IActionResult> SetPage(string typeId, int page)
+    public async Task<IActionResult> SetPage(string typeId, int page, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, ModelUI.Table);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -30,21 +34,22 @@ public partial class FormController
             this,
             nameof(SetPageImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            page, modelHandler);
+            page, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> SetPageImpl<T, TKey>(int page, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> SetPageImpl<T, TKey>(int page, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
             return Forbid();
 
         var pageState = this.GetPageState();
-        var tableState = pageState.GetOrCreate<TableState>(TableStateKeys.Partition, TableStateKeys.TableState, () => new());
+        var tableState = pageState.GetOrCreate<TableState>(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, () => new());
         tableState.Page = page;
-        pageState.Set(TableStateKeys.Partition, TableStateKeys.TableState, tableState);
+        pageState.Set(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, tableState);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync(tableState);
+        tableModel.ComponentId = componentId;
 
         return Ok(tableModel);
     }
@@ -55,11 +60,15 @@ public partial class FormController
     /// </summary>
     /// <param name="typeId">The identifier of the model type being displayed</param>
     /// <param name="pageSize">The number of items to display per page</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the updated table view with the new page size</returns>
     [HttpPost("{typeId}/SetPageSize")]
     [TableRefreshAction]
-    public async Task<IActionResult> SetPageSize(string typeId, int pageSize)
+    public async Task<IActionResult> SetPageSize(string typeId, int pageSize, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, ModelUI.Table);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -68,21 +77,22 @@ public partial class FormController
             this,
             nameof(SetPageSizeImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            pageSize, modelHandler);
+            pageSize, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> SetPageSizeImpl<T, TKey>(int pageSize, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> SetPageSizeImpl<T, TKey>(int pageSize, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
             return Forbid();
 
         var pageState = this.GetPageState();
-        var tableState = pageState.GetOrCreate<TableState>(TableStateKeys.Partition, TableStateKeys.TableState, () => new());
+        var tableState = pageState.GetOrCreate<TableState>(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, () => new());
         tableState.PageSize = pageSize;
-        pageState.Set(TableStateKeys.Partition, TableStateKeys.TableState, tableState);
+        pageState.Set(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, tableState);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync(tableState);
+        tableModel.ComponentId = componentId;
 
         return Ok(tableModel);
     }
@@ -94,11 +104,15 @@ public partial class FormController
     /// <param name="typeId">The identifier of the model type being sorted</param>
     /// <param name="column">The name of the column to sort by</param>
     /// <param name="direction">The sort direction ("asc" for ascending, "desc" for descending)</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the updated table view with sorted data</returns>
     [HttpPost("{typeId}/SetSort")]
     [TableRefreshAction]
-    public async Task<IActionResult> SetSort(string typeId, string column, string direction)
+    public async Task<IActionResult> SetSort(string typeId, string column, string direction, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, ModelUI.Table);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -107,22 +121,23 @@ public partial class FormController
             this,
             nameof(SetSortImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            column, direction, modelHandler);
+            column, direction, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> SetSortImpl<T, TKey>(string column, string direction, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> SetSortImpl<T, TKey>(string column, string direction, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
             return Forbid();
 
         var pageState = this.GetPageState();
-        var tableState = pageState.GetOrCreate<TableState>(TableStateKeys.Partition, TableStateKeys.TableState, () => new());
+        var tableState = pageState.GetOrCreate<TableState>(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, () => new());
         tableState.SortColumn = column;
         tableState.SortDirection = direction;
-        pageState.Set(TableStateKeys.Partition, TableStateKeys.TableState, tableState);
+        pageState.Set(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, tableState);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync(tableState);
+        tableModel.ComponentId = componentId;
 
         return Ok(tableModel);
     }
@@ -135,11 +150,15 @@ public partial class FormController
     /// <param name="column">The name of the column to filter</param>
     /// <param name="filter">The filter value or criteria to apply</param>
     /// <param name="input">An input parameter that may specify filter type or additional context</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the updated table view with filtered data</returns>
     [HttpPost("{typeId}/SetFilter")]
     [TableRefreshAction]
-    public async Task<IActionResult> SetFilter(string typeId, string column, string filter, int input)
+    public async Task<IActionResult> SetFilter(string typeId, string column, string filter, int input, string? componentId)
     {
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
         var modelHandler = await _modelRegistry.GetModelHandler(typeId, ModelUI.Table);
         if (modelHandler == null)
             return BadRequest($"Model handler for type '{typeId}' not found.");
@@ -148,17 +167,18 @@ public partial class FormController
             this,
             nameof(SetFilterImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            column, filter, input, modelHandler);
+            column, filter, input, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> SetFilterImpl<T, TKey>(string column, string filter, int input, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> SetFilterImpl<T, TKey>(string column, string filter, int input, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
             return Forbid();
 
         var tableModel = await modelHandler.BuildTableModelAsync();
+        tableModel.ComponentId = componentId;
         var columnModel = tableModel.Columns.FirstOrDefault(c => c.DataName == column);
         if (columnModel == null)
             return BadRequest($"Column '{column}' not found.");
@@ -167,7 +187,7 @@ public partial class FormController
             return BadRequest($"Column '{column}' is not filterable.");
 
         var pageState = this.GetPageState();
-        var tableState = pageState.GetOrCreate<TableState>(TableStateKeys.Partition, TableStateKeys.TableState, () => new());
+        var tableState = pageState.GetOrCreate<TableState>(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, () => new());
         if (columnModel.Filter != null)
         {
             if (string.IsNullOrEmpty(filter))
@@ -187,7 +207,7 @@ public partial class FormController
             tableState.RangeFilters[column] = (from, to);
         }
 
-        pageState.Set(TableStateKeys.Partition, TableStateKeys.TableState, tableState);
+        pageState.Set(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, tableState);
         await _tableProvider.FetchPageAsync(tableModel, modelHandler.GetQueryable!(), tableState);
         return Ok(tableModel);
     }

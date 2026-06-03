@@ -75,7 +75,10 @@ public class HtmxRequestIntegrationTests
         var client = host.GetTestClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/Form/Widget/SetPage")
         {
-            Content = new FormUrlEncodedContent([new KeyValuePair<string, string>("page", "1")])
+            Content = new FormUrlEncodedContent([
+                new KeyValuePair<string, string>("page", "1"),
+                new KeyValuePair<string, string>("componentId", "hc-table-widget")
+            ])
         };
         request.Headers.Add("HX-Request", "true");
 
@@ -85,7 +88,7 @@ public class HtmxRequestIntegrationTests
         response.EnsureSuccessStatusCode();
         Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
         Assert.Contains("hx-swap-oob=\"outerHTML\"", body);
-        Assert.Contains("id=\"table-body\"", body);
+        Assert.Contains("id=\"hc-table-widget-body\"", body);
         Assert.Contains("id=\"page_state\"", body);
     }
 

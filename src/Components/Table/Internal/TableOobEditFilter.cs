@@ -54,6 +54,7 @@ public class TableOobEditFilter : OobResultFilterBase<TableEditActionAttribute>
             throw new InvalidOperationException($"MultiSwapViewResult must have a model set when filtering via {nameof(TableEditActionAttribute)}.");
         }
         var tableModel = (ITableModel)multiSwapViewResult.Model;
+        tableModel.ComponentId = TableComponentIdentity.Ensure(tableModel.ComponentId);
         multiSwapViewResult
             .WithOobContent(_viewPaths.Table.EditClassToggle, tableModel)
             .WithOobContent(_viewPaths.Table.TableActionList, tableModel);
