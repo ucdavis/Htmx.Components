@@ -12,7 +12,8 @@ namespace Htmx.Components.Utilities;
 /// </summary>
 public static class GenericMethodInvoker
 {
-    private static readonly ConcurrentDictionary<string, Delegate> _delegateCache = new();
+    private static readonly ConcurrentDictionary<InvocationCacheKey, Delegate> _delegateCache = new();
+    private static readonly Type NullArgumentType = typeof(NullArgument);
 
     private static Delegate GetOrAddDelegate(
         Type targetType,
@@ -22,16 +23,17 @@ public static class GenericMethodInvoker
         bool isStatic,
         Type? expectedReturnType = null)
     {
-        var cacheKey = $"{targetType.FullName}|{methodName}|{string.Join("|", genericTypes.Select(t => t.FullName))}|{string.Join("|", paramTypes.Select(t => t.FullName))}|{expectedReturnType?.FullName}";
+        var cacheKey = new InvocationCacheKey(
+            targetType,
+            methodName,
+            genericTypes.ToArray(),
+            paramTypes.ToArray(),
+            isStatic,
+            expectedReturnType);
+
         return _delegateCache.GetOrAdd(cacheKey, _ =>
         {
-            var flags = BindingFlags.NonPublic | BindingFlags.Public | (isStatic ? BindingFlags.Static : BindingFlags.Instance);
-            var method = targetType.GetMethod(methodName, flags);
-            if (method == null)
-                throw new InvalidOperationException($"Method '{methodName}' not found on {targetType.Name}.");
-
-            if (genericTypes.Length > 0)
-                method = method.MakeGenericMethod(genericTypes);
+            var method = ResolveMethod(targetType, methodName, genericTypes, paramTypes, isStatic, expectedReturnType);
 
             var instanceParam = Expression.Parameter(typeof(object), "instance");
             var argsParam = Expression.Parameter(typeof(object[]), "args");
@@ -61,6 +63,133 @@ public static class GenericMethodInvoker
         });
     }
 
+    private static MethodInfo ResolveMethod(
+        Type targetType,
+        string methodName,
+        Type[] genericTypes,
+        Type[] paramTypes,
+        bool isStatic,
+        Type? expectedReturnType)
+    {
+        var flags = BindingFlags.NonPublic | BindingFlags.Public | FlattenHierarchyFor(isStatic) |
+                    (isStatic ? BindingFlags.Static : BindingFlags.Instance);
+
+        var matches = targetType
+            .GetMethods(flags)
+            .Where(method => method.Name == methodName)
+            .Select(method => TryCloseGenericMethod(method, genericTypes))
+            .Where(method => method is not null)
+            .Cast<MethodInfo>()
+            .Where(method => ReturnTypeMatches(method, expectedReturnType))
+            .Select(method => new MethodMatch(method, GetParameterMatchScore(method.GetParameters(), paramTypes)))
+            .Where(match => match.Score is not null)
+            .ToArray();
+
+        if (matches.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"Method '{methodName}' with {genericTypes.Length} generic argument(s) and {paramTypes.Length} parameter(s) was not found on {targetType.FullName}.");
+        }
+
+        var bestScore = matches.Min(match => match.Score!.Value);
+        var bestMatches = matches.Where(match => match.Score == bestScore).ToArray();
+
+        return bestMatches.Length == 1
+            ? bestMatches[0].Method
+            : throw new InvalidOperationException(
+                $"Method '{methodName}' is ambiguous for the supplied generic argument(s) and parameter(s) on {targetType.FullName}.");
+    }
+
+    private static BindingFlags FlattenHierarchyFor(bool isStatic)
+    {
+        return isStatic ? BindingFlags.FlattenHierarchy : 0;
+    }
+
+    private static MethodInfo? TryCloseGenericMethod(MethodInfo method, Type[] genericTypes)
+    {
+        if (!method.IsGenericMethodDefinition)
+        {
+            return genericTypes.Length == 0 ? method : null;
+        }
+
+        if (method.GetGenericArguments().Length != genericTypes.Length)
+        {
+            return null;
+        }
+
+        try
+        {
+            return method.MakeGenericMethod(genericTypes);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static bool ReturnTypeMatches(MethodInfo method, Type? expectedReturnType)
+    {
+        return expectedReturnType is null ||
+               expectedReturnType == typeof(object) ||
+               expectedReturnType.IsAssignableFrom(method.ReturnType) ||
+               method.ReturnType == typeof(void) && expectedReturnType == typeof(void);
+    }
+
+    private static int? GetParameterMatchScore(ParameterInfo[] parameters, Type[] argumentTypes)
+    {
+        if (parameters.Length != argumentTypes.Length)
+        {
+            return null;
+        }
+
+        var score = 0;
+        foreach (var (parameter, argumentType) in parameters.Zip(argumentTypes))
+        {
+            var parameterScore = GetParameterScore(parameter.ParameterType, argumentType);
+            if (parameterScore is null)
+            {
+                return null;
+            }
+
+            score += parameterScore.Value;
+        }
+
+        return score;
+    }
+
+    private static int? GetParameterScore(Type parameterType, Type argumentType)
+    {
+        if (argumentType == NullArgumentType)
+        {
+            return !parameterType.IsValueType || Nullable.GetUnderlyingType(parameterType) is not null
+                ? 0
+                : null;
+        }
+
+        if (parameterType == argumentType)
+        {
+            return 0;
+        }
+
+        if (!parameterType.IsAssignableFrom(argumentType))
+        {
+            return null;
+        }
+
+        var distance = 1;
+        for (var current = argumentType.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current == parameterType)
+            {
+                return distance;
+            }
+
+            distance++;
+        }
+
+        return distance;
+    }
+
     /// <summary>
     /// Invokes a generic method that returns void using cached compiled expressions for optimal performance.
     /// The method is located by name and generic type parameters, then invoked with the provided arguments.
@@ -77,7 +206,7 @@ public static class GenericMethodInvoker
         params object[] parameters)
     {
         var type = instance.GetType();
-        var paramTypes = parameters.Select(p => p?.GetType() ?? typeof(object)).ToArray();
+        var paramTypes = GetParameterTypes(parameters);
         var del = GetOrAddDelegate(type, methodName, genericTypes, paramTypes, false, typeof(void));
         if (del is Action<object, object[]> action)
             action(instance, parameters);
@@ -103,7 +232,7 @@ public static class GenericMethodInvoker
         params object[] parameters)
     {
         var type = instance.GetType();
-        var paramTypes = parameters.Select(p => p?.GetType() ?? typeof(object)).ToArray();
+        var paramTypes = GetParameterTypes(parameters);
         var del = GetOrAddDelegate(type, methodName, genericTypes, paramTypes, false, typeof(TReturn));
         if (del is Func<object, object[], object> func)
             return (TReturn)func(instance, parameters)!;
@@ -154,5 +283,53 @@ public static class GenericMethodInvoker
         if (result is Task<TResult> task)
             return await task;
         throw new InvalidOperationException("Method does not return Task<TResult>.");
+    }
+
+    private static Type[] GetParameterTypes(object?[] parameters)
+    {
+        return parameters.Select(parameter => parameter?.GetType() ?? NullArgumentType).ToArray();
+    }
+
+    private sealed class NullArgument;
+
+    private readonly record struct MethodMatch(MethodInfo Method, int? Score);
+
+    private readonly record struct InvocationCacheKey(
+        Type TargetType,
+        string MethodName,
+        Type[] GenericTypes,
+        Type[] ParameterTypes,
+        bool IsStatic,
+        Type? ExpectedReturnType)
+    {
+        public bool Equals(InvocationCacheKey other)
+        {
+            return TargetType == other.TargetType &&
+                   MethodName == other.MethodName &&
+                   GenericTypes.SequenceEqual(other.GenericTypes) &&
+                   ParameterTypes.SequenceEqual(other.ParameterTypes) &&
+                   IsStatic == other.IsStatic &&
+                   ExpectedReturnType == other.ExpectedReturnType;
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(TargetType);
+            hash.Add(MethodName);
+            foreach (var genericType in GenericTypes)
+            {
+                hash.Add(genericType);
+            }
+
+            foreach (var parameterType in ParameterTypes)
+            {
+                hash.Add(parameterType);
+            }
+
+            hash.Add(IsStatic);
+            hash.Add(ExpectedReturnType);
+            return hash.ToHashCode();
+        }
     }
 }

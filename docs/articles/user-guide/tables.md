@@ -84,17 +84,17 @@ Create a view file to render the table (e.g., `Views/Admin/_Repos.cshtml`):
 
 ## JavaScript Requirements
 
-Tables with inline editing require the `table-behavior` JavaScript behavior:
+Tables with inline editing require the `table-inline-editing` JavaScript behavior:
 
 ```html
-<!-- Include all behaviors (includes table-behavior) -->
+<!-- Include all behaviors (includes table-inline-editing) -->
 <htmx-scripts></htmx-scripts>
 
-<!-- Include only table-behavior -->
-<htmx-scripts include="table-behavior"></htmx-scripts>
+<!-- Include only table-inline-editing -->
+<htmx-scripts include="table-inline-editing"></htmx-scripts>
 ```
 
-The `table-behavior` provides:
+The `table-inline-editing` behavior provides:
 - **Visual editing states**: Highlights rows being edited
 - **Inline editing coordination**: Manages edit mode transitions
 

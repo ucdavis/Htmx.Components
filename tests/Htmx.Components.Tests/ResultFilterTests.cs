@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Htmx.Components.Tests;
@@ -101,14 +102,59 @@ public class ResultFilterTests
         Assert.Contains(first, TableComponentIdentity.HxVals(first));
     }
 
+    [Fact]
+    public async Task OobResultFilterBase_ConvertsNonHtmxObjectResultToConfiguredView()
+    {
+        var context = CreateResultExecutingContext(new OkObjectResult(new Widget { Id = 8, Name = "Beta" }));
+        context.ActionDescriptor = new ControllerActionDescriptor
+        {
+            MethodInfo = typeof(FilterTestController).GetMethod(nameof(FilterTestController.PipelineObject))!
+        };
+        var filter = new PipelineTestFilter();
+
+        await filter.OnResultExecutionAsync(context, Next(context));
+
+        var view = Assert.IsType<ViewResult>(context.Result);
+        Assert.Equal("_PipelineFull", view.ViewName);
+        var model = Assert.IsType<Widget>(view.ViewData.Model);
+        Assert.Equal(8, model.Id);
+    }
+
+    [Fact]
+    public async Task OobResultFilterBase_LeavesNonHtmxOkResultUnchanged()
+    {
+        var ok = new OkResult();
+        var context = CreateResultExecutingContext(ok);
+        context.ActionDescriptor = new ControllerActionDescriptor
+        {
+            MethodInfo = typeof(FilterTestController).GetMethod(nameof(FilterTestController.PipelineOk))!
+        };
+        var filter = new PipelineTestFilter();
+
+        await filter.OnResultExecutionAsync(context, Next(context));
+
+        Assert.Same(ok, context.Result);
+        Assert.False(filter.WasMutated);
+    }
+
     private static ResultExecutingContext CreateResultExecutingContext(IActionResult result)
     {
         var actionContext = MultiSwapViewResultTests.CreateActionContext();
+        actionContext.ActionDescriptor = new ControllerActionDescriptor
+        {
+            MethodInfo = typeof(FilterTestController).GetMethod(nameof(FilterTestController.Refresh))!
+        };
+        var controller = new FilterTestController
+        {
+            ControllerContext = new ControllerContext(actionContext),
+            TempData = new TempDataDictionary(actionContext.HttpContext, new NullTempDataProvider())
+        };
+
         return new ResultExecutingContext(
             actionContext,
             [],
             result,
-            controller: new FilterTestController());
+            controller);
     }
 
     private static ResultExecutionDelegate Next(ResultExecutingContext context)
@@ -124,6 +170,41 @@ public class ResultFilterTests
     {
         [TableRefreshAction]
         public IActionResult Refresh() => Ok();
+
+        [PipelineTest]
+        public IActionResult PipelineObject() => Ok();
+
+        [PipelineTest]
+        public IActionResult PipelineOk() => Ok();
+    }
+
+    private sealed class PipelineTestAttribute : Attribute;
+
+    private sealed class PipelineTestFilter : OobResultFilterBase<PipelineTestAttribute>
+    {
+        public bool WasMutated { get; private set; }
+
+        protected override Task<string?> GetViewNameForNonHtmxRequest(
+            PipelineTestAttribute attribute,
+            ControllerActionDescriptor cad)
+        {
+            return Task.FromResult<string?>("_PipelineFull");
+        }
+
+        protected override Task UpdateMultiSwapViewResultAsync(
+            PipelineTestAttribute attribute,
+            MultiSwapViewResult multiSwapViewResult,
+            ResultExecutingContext context)
+        {
+            WasMutated = true;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class NullTempDataProvider : ITempDataProvider
+    {
+        public IDictionary<string, object> LoadTempData(HttpContext context) => new Dictionary<string, object>();
+        public void SaveTempData(HttpContext context, IDictionary<string, object> values) { }
     }
 
 }

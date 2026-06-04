@@ -1,9 +1,7 @@
 using Htmx.Components.NavBar;
 using Htmx.Components.ViewResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace Htmx.Components.Filters;
 
@@ -46,6 +44,8 @@ namespace Htmx.Components.Filters;
 public abstract class OobResultFilterBase<T> : IAsyncResultFilter
     where T : Attribute
 {
+    private readonly HtmxResponsePipeline<T> _pipeline = new();
+
     /// <summary>
     /// Executes the result filter logic, processing actions marked with the target attribute type.
     /// For HTMX requests, converts the result to a MultiSwapViewResult with OOB updates.
@@ -56,60 +56,7 @@ public abstract class OobResultFilterBase<T> : IAsyncResultFilter
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task OnResultExecutionAsync(ResultExecutingContext context, ResultExecutionDelegate next)
     {
-        if (context.ActionDescriptor is ControllerActionDescriptor cad)
-        {
-            var attribute = cad.MethodInfo.GetCustomAttributes(typeof(T), true).Cast<T>().FirstOrDefault();
-            if (attribute != null && (
-                context.Result is ObjectResult
-                || context.Result is MultiSwapViewResult
-                || context.Result is OkResult))
-            {
-                if (context.Result is ObjectResult { StatusCode: >= 400 })
-                {
-                    await next();
-                    return;
-                }
-
-                if (context.HttpContext.Request.IsHtmx())
-                {
-                    MultiSwapViewResult multiSwapViewResult = null!;
-                    multiSwapViewResult = context.Result switch
-                    {
-                        ObjectResult objResult => new MultiSwapViewResult
-                        {
-                            Model = objResult.Value
-                        },
-                        // TODO: OkResult is a special case that isn't applicable to all subclasses. Find a way to handle this more gracefully.
-                        OkResult => new MultiSwapViewResult(),
-                        MultiSwapViewResult msvr => msvr,
-                        _ => throw new InvalidOperationException("Unsupported result type.")
-                    };
-                    await UpdateMultiSwapViewResultAsync(attribute, multiSwapViewResult, context);
-                    context.Result = multiSwapViewResult;
-                }
-                else
-                {
-                    // TODO: OkResult is a special case that isn't applicable to all subclasses. Find a way to handle this more gracefully.
-                    if (context.Result is OkResult)
-                    {
-                        await next();
-                        return;
-                    }
-                    var viewName = await GetViewNameForNonHtmxRequest(attribute, cad);
-                    var controller = (Controller)context.Controller;
-                    context.Result = new ViewResult
-                    {
-                        ViewName = viewName,
-                        ViewData = new ViewDataDictionary(controller.ViewData)
-                        {
-                            Model = context.Result is ObjectResult obj ? obj.Value : null
-                        },
-                        TempData = controller.TempData
-                    };
-                }
-            }
-        }
-        await next();
+        await _pipeline.ExecuteAsync(context, next, new OobResultMutator(this));
     }
 
     /// <summary>
@@ -139,26 +86,26 @@ public abstract class OobResultFilterBase<T> : IAsyncResultFilter
     /// <returns>A task representing the asynchronous update operation.</returns>
     protected abstract Task UpdateMultiSwapViewResultAsync(T attribute, MultiSwapViewResult multiSwapViewResult, ResultExecutingContext context);
 
-}
+    private sealed class OobResultMutator : IHtmxResponseMutator<T>
+    {
+        private readonly OobResultFilterBase<T> _filter;
 
-//TODO: If the number of subclasses or special edge cases balloons, consider a more generic pluggable system
-// public interface IMultiSwapViewResultMutator
-// {
-//     Task MutateAsync(ResultExecutingContext context, MultiSwapViewResult result);
-// }
-//
-// public class HtmxPipelineResultFilter : IAsyncResultFilter
-// {
-//     private readonly IEnumerable<IMultiSwapViewResultMutator> _mutators;
-//     public HtmxPipelineResultFilter(IEnumerable<IMultiSwapViewResultMutator> mutators)
-//         => _mutators = mutators;
-//     public async Task OnResultExecutionAsync(ResultExecutingContext context, ResultExecutionDelegate next)
-//     {
-//         await next();
-//         if (context.Result is MultiSwapViewResult result)
-//         {
-//             foreach (var mutator in _mutators)
-//                 await mutator.MutateAsync(context, result);
-//         }
-//     }
-// }
+        public OobResultMutator(OobResultFilterBase<T> filter)
+        {
+            _filter = filter;
+        }
+
+        public Task MutateAsync(HtmxResponseMutation<T> mutation)
+        {
+            return _filter.UpdateMultiSwapViewResultAsync(
+                mutation.Attribute,
+                mutation.Result,
+                mutation.ResultContext);
+        }
+
+        public Task<string?> GetViewNameForNonHtmxRequestAsync(T attribute, ControllerActionDescriptor actionDescriptor)
+        {
+            return _filter.GetViewNameForNonHtmxRequest(attribute, actionDescriptor);
+        }
+    }
+}

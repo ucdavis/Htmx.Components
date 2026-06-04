@@ -34,6 +34,38 @@ public class MultiSwapViewResultTests
         await Assert.ThrowsAsync<ArgumentException>(() => result.ExecuteResultAsync(CreateActionContext()));
     }
 
+    [Fact]
+    public void AddHxSwapToOuterElement_SkipsLeadingCommentsAndHandlesQuotedAttributes()
+    {
+        var wrapped = MultiSwapViewResult.AddHxSwapToOuterElement(
+            """<!-- before --><section data-expression="a > b">content</section>""",
+            new HtmxViewInfo
+            {
+                TargetDisposition = OobTargetDisposition.BeforeEnd,
+                TargetSelector = "#messages"
+            });
+
+        Assert.Equal(
+            """<template><!-- before --><section data-expression="a > b" hx-swap-oob="beforeend:#messages">content</section></template>""",
+            wrapped);
+    }
+
+    [Fact]
+    public void AddHxSwapToOuterElement_DoesNotRewriteExistingOobAttribute()
+    {
+        var html = """<section hx-swap-oob="outerHTML:#existing">content</section>""";
+
+        var wrapped = MultiSwapViewResult.AddHxSwapToOuterElement(
+            html,
+            new HtmxViewInfo
+            {
+                TargetDisposition = OobTargetDisposition.InnerHtml,
+                TargetSelector = "#other"
+            });
+
+        Assert.Equal(html, wrapped);
+    }
+
     internal static ActionContext CreateActionContext()
     {
         var services = new ServiceCollection();

@@ -255,7 +255,7 @@ This approach ensures that all authorization decisions flow through ASP.NET Core
 
 ### 7. JavaScript Architecture
 
-The framework includes a sophisticated JavaScript delivery system that enables server-side configuration and dynamic script inclusion through the <xref:Htmx.Components.TagHelpers.HtmxScriptsTagHelper>.
+The framework includes a JavaScript delivery system that enables server-side behavior selection through the <xref:Htmx.Components.TagHelpers.HtmxScriptsTagHelper> while serving the runtime as a packaged static web asset.
 
 #### Key Components
 
@@ -264,17 +264,19 @@ The framework includes a sophisticated JavaScript delivery system that enables s
 <htmx-scripts include="page-state-headers,table-inline-editing"></htmx-scripts>
 ```
 
-**Script Behaviors**: Modular JavaScript functionalities delivered as Razor partial views:
-- `PageStateHeaders`: Automatic page state management
-- `TableInlineEditing`: Table interaction and editing behaviors
-- `BlurSaveCoordination`: Form coordination and race condition prevention
-- `AuthenticationRetry`: Authentication retry handling
+**Script Behaviors**: Modular JavaScript functionality installed from `htmx-components.js`:
+- `page-state-headers`: Automatic page state management
+- `table-inline-editing`: Table interaction and editing behaviors
+- `blur-save-coordination`: Form coordination and race condition prevention
+- `request-lifecycle`: Default pending UI behavior
+- `error-handling`: Scoped/global error display
+- `authentication-retry`: Authentication retry handling
 
 **Benefits:**
-- **Server-side Generation**: Scripts can include dynamically generated URLs and configuration
+- **Static Asset Delivery**: The runtime is versioned and cacheable
 - **Selective Inclusion**: Choose which behaviors to include per page
-- **Maintainability**: Each behavior is isolated and testable
-- **Performance**: Inline delivery eliminates additional HTTP requests
+- **Maintainability**: Shared behavior lives in one browser-tested module
+- **Small Server Payload**: Razor emits configuration JSON instead of inline behavior code
 
 For detailed information, see [JavaScript Architecture](javascript-architecture.md).
 
