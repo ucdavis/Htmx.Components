@@ -28,9 +28,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -53,15 +54,15 @@ public partial class FormController
         if (editingExistingRecord)
         {
             if (modelHandler.UpdateModel == null)
-                return BadRequest($"UpdateModel not defined for type '{modelHandler.TypeId}'.");
+                return CrudError("This item cannot be updated.", componentId);
 
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Update))
-                return Forbid();
+                return AuthorizationError(componentId);
             var result = await modelHandler.UpdateModel!(editingItem);
             if (result.IsError)
             {
                 // If the update failed, we return the error message
-                return BadRequest(result.Message);
+                return CrudError(result.Message, componentId);
             }
             tableModel.Rows.Add(new TableRowContext<T, TKey>
             {
@@ -74,15 +75,15 @@ public partial class FormController
         else
         {
             if (modelHandler.CreateModel == null)
-                return BadRequest($"CreateModel not defined for type '{modelHandler.TypeId}'.");
+                return CrudError("This item cannot be created.", componentId);
 
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Create))
-                return Forbid();
+                return AuthorizationError(componentId);
             var result = await modelHandler.CreateModel!(editingItem);
             if (result.IsError)
             {
                 // If the creation failed, we return the error message
-                return BadRequest(result.Message);
+                return CrudError(result.Message, componentId);
             }
             tableModel.Rows.Add(new TableRowContext<T, TKey>
             {
@@ -122,9 +123,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -146,7 +148,7 @@ public partial class FormController
         {
             // Check if the user is authorized to read the item
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
-                return Forbid();
+                return AuthorizationError(componentId);
 
             var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem)!;
             var editingKey = modelHandler.KeySelectorFunc(editingItem);
@@ -194,9 +196,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -210,7 +213,7 @@ public partial class FormController
         where T : class, new()
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Create))
-            return Forbid();
+            return AuthorizationError(componentId);
 
         var editingItem = new T();
 
@@ -250,9 +253,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -266,10 +270,10 @@ public partial class FormController
         where T : class
     {
         if (modelHandler.DeleteModel == null)
-            return BadRequest($"DeleteModel not defined for type '{modelHandler.TypeId}'.");
+            return CrudError("This item cannot be deleted.", componentId);
 
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Delete))
-            return Forbid();
+            return AuthorizationError(componentId);
 
         var key = (TKey)JsonSerializer.Deserialize(stringKey, modelHandler.KeyType)!;
 
@@ -278,7 +282,7 @@ public partial class FormController
         if (result.IsError)
         {
             // If the deletion failed, we return the error message
-            return BadRequest(result.Message);
+            return CrudError(result.Message, componentId);
         }
 
         var tableModel = await modelHandler.BuildTableModelAsync();

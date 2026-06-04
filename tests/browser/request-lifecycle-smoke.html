@@ -14,7 +14,7 @@
     };
   </script>
   <script type="application/json" id="htmx-components-config">
-    { "Scripts": [ "request-lifecycle", "authentication-retry" ] }
+    { "Scripts": [ "request-lifecycle", "error-handling", "authentication-retry" ] }
   </script>
   <script src="/wwwroot/js/htmx-components.js?v=request-lifecycle-smoke" defer></script>
 </head>
@@ -28,8 +28,10 @@
       <button id="peer" type="button">Peer</button>
       <a id="pending-link" href="/blocked">Blocked link</a>
     </section>
+    <htmx-error-region id="scoped-error" data-hc-error-region hidden></htmx-error-region>
   </htmx-request-scope>
 
+  <htmx-error-region id="global-error" data-hc-global-error-region data-hc-error-region hidden></htmx-error-region>
   <button id="auth-one" type="button">Auth one</button>
   <button id="auth-two" type="button">Auth two</button>
   <pre id="smoke-result" aria-live="polite">pending</pre>
@@ -99,6 +101,17 @@
       assert(!document.getElementById("pending-link").classList.contains("hc-pending-disabled"), message + ": link remained pending-disabled");
       assert(!document.getElementById("stale").classList.contains("hc-stale-region"), message + ": stale region remained dimmed");
       assert(document.getElementById("indicator").hidden, message + ": indicator remained visible");
+    }
+
+    function assertError(regionId, expectedText, message) {
+      const region = document.getElementById(regionId);
+      assert(!region.hidden, message + ": error region is hidden");
+      assert(region.textContent.includes(expectedText), message + ": expected error text was not shown");
+    }
+
+    function assertNoError(regionId, unexpectedText, message) {
+      const region = document.getElementById(regionId);
+      assert(!region.textContent.includes(unexpectedText), message + ": leaked unsafe text");
     }
 
     async function runOutcome(name, completionEvent) {
@@ -178,6 +191,46 @@
       results.push("auth retry");
     }
 
+    async function runErrorHandling() {
+      const trigger = document.getElementById("trigger");
+
+      dispatchHtmx(trigger, "htmx:responseError", requestDetail(trigger, {
+        status: 400,
+        responseText: `
+          <div data-hc-error-fragment data-hc-error-kind="validation">
+            <strong data-hc-error-title>Check your entry</strong>
+            <span data-hc-error-message>Use a valid value.</span>
+          </div>`,
+        getResponseHeader: function () { return null; }
+      }));
+      assertError("scoped-error", "Use a valid value.", "structured response error");
+
+      dispatchHtmx(trigger, "htmx:beforeRequest", requestDetail(trigger, {}));
+      assert(document.getElementById("scoped-error").hidden, "beforeRequest did not clear scoped error");
+
+      dispatchHtmx(trigger, "htmx:responseError", requestDetail(trigger, {
+        status: 500,
+        responseText: "System.InvalidOperationException: secret connection string",
+        getResponseHeader: function () { return null; }
+      }));
+      assertError("scoped-error", "Something went wrong", "500 fallback error");
+      assertNoError("scoped-error", "secret connection string", "500 fallback error");
+
+      dispatchHtmx(trigger, "htmx:sendError", requestDetail(trigger, {}));
+      assertError("scoped-error", "could not be sent", "send error");
+
+      dispatchHtmx(trigger, "htmx:timeout", requestDetail(trigger, {}));
+      assertError("scoped-error", "took too long", "timeout error");
+
+      const globalTrigger = document.getElementById("auth-one");
+      const globalDetail = requestDetail(globalTrigger, {});
+      globalDetail.target = globalTrigger;
+      dispatchHtmx(globalTrigger, "htmx:swapError", globalDetail);
+      assertError("global-error", "could not be displayed", "swap error global fallback");
+
+      results.push("error handling");
+    }
+
     window.runRequestLifecycleSmoke = async function () {
       await runOutcome("success", "htmx:afterRequest");
       await runOutcome("error", "htmx:responseError");
@@ -186,6 +239,7 @@
       await runSuppressedPendingActivation();
       await runCanceledRequest();
       await runAuthRetry();
+      await runErrorHandling();
       return {
         passed: true,
         results,

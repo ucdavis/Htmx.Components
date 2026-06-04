@@ -21,6 +21,7 @@ public class HtmxScriptsTagHelperTests
         Assert.Contains("table-inline-editing", html);
         Assert.Contains("blur-save-coordination", html);
         Assert.Contains("request-lifecycle", html);
+        Assert.Contains("error-handling", html);
         Assert.Contains("authentication-retry", html);
     }
 
@@ -37,6 +38,7 @@ public class HtmxScriptsTagHelperTests
         Assert.Contains("page-state-headers", html);
         Assert.Contains("table-inline-editing", html);
         Assert.DoesNotContain("blur-save-coordination", html);
+        Assert.DoesNotContain("error-handling", html);
         Assert.DoesNotContain("authentication-retry", html);
     }
 

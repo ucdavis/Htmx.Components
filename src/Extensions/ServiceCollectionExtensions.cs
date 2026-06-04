@@ -130,10 +130,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<TableOobEditFilter>();
         services.AddScoped<NavActionResultFilter>();
         services.AddScoped<AuthStatusUpdateFilter>();
+        services.AddScoped<HtmxExceptionFilter>();
 
         services.PostConfigure<MvcOptions>(options =>
         {
             // Be sure to place filters that convert models to MultiSwapViewResults before the filters that inject OOB content.
+            options.Filters.AddService<HtmxExceptionFilter>();
             options.Filters.AddService<TableOobRefreshFilter>();
             options.Filters.AddService<TableOobEditFilter>();
             options.Filters.AddService<AuthStatusUpdateFilter>();

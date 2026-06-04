@@ -26,9 +26,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, ModelUI.Table);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, ModelUI.Table, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -42,7 +43,7 @@ public partial class FormController
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
-            return Forbid();
+            return AuthorizationError(componentId);
 
         var pageState = this.GetPageState();
         var tableState = pageState.GetOrCreate<TableState>(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, () => new());
@@ -69,9 +70,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, ModelUI.Table);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, ModelUI.Table, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -85,7 +87,7 @@ public partial class FormController
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
-            return Forbid();
+            return AuthorizationError(componentId);
 
         var pageState = this.GetPageState();
         var tableState = pageState.GetOrCreate<TableState>(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, () => new());
@@ -113,9 +115,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, ModelUI.Table);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, ModelUI.Table, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -129,7 +132,7 @@ public partial class FormController
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
-            return Forbid();
+            return AuthorizationError(componentId);
 
         var pageState = this.GetPageState();
         var tableState = pageState.GetOrCreate<TableState>(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, () => new());
@@ -159,9 +162,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, ModelUI.Table);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, ModelUI.Table, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -175,16 +179,16 @@ public partial class FormController
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
-            return Forbid();
+            return AuthorizationError(componentId);
 
         var tableModel = await modelHandler.BuildTableModelAsync();
         tableModel.ComponentId = componentId;
         var columnModel = tableModel.Columns.FirstOrDefault(c => c.DataName == column);
         if (columnModel == null)
-            return BadRequest($"Column '{column}' not found.");
+            return ValidationError("The requested column could not be found.", componentId);
 
         if (!columnModel.Filterable || (columnModel.RangeFilter == null && columnModel.Filter == null))
-            return BadRequest($"Column '{column}' is not filterable.");
+            return ValidationError("This column cannot be filtered.", componentId);
 
         var pageState = this.GetPageState();
         var tableState = pageState.GetOrCreate<TableState>(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, () => new());
@@ -203,7 +207,7 @@ public partial class FormController
             else if (input == 2)
                 to = filter;
             else
-                return BadRequest($"Invalid input value: {input}");
+                return ValidationError("The submitted filter value is not valid.", componentId);
             tableState.RangeFilters[column] = (from, to);
         }
 

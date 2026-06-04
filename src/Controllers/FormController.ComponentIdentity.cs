@@ -10,7 +10,7 @@ public partial class FormController
         normalizedComponentId = "";
         if (string.IsNullOrWhiteSpace(componentId))
         {
-            return BadRequest("A table component id is required.");
+            return ValidationError("This table action could not be matched to a component.");
         }
 
         normalizedComponentId = TableComponentIdentity.Ensure(componentId);

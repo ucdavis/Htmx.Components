@@ -6,6 +6,7 @@ using Htmx.Components.Utilities;
 using Htmx.Components.ViewResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using static Htmx.Components.Authorization.AuthConstants;
 using static Htmx.Components.State.PageStateConstants;
 using Htmx.Components.Table.Internal;
@@ -30,9 +31,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -46,16 +48,16 @@ public partial class FormController
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
-            return Forbid();
+            return AuthorizationError(componentId);
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Update))
-            return Forbid();
+            return AuthorizationError(componentId);
 
         var key = (TKey)JsonSerializer.Deserialize(stringKey, modelHandler.KeyType)!;
         var editingItem = await modelHandler.GetQueryable!()
             .Where(modelHandler.GetKeyPredicate(key))
             .SingleOrDefaultAsync();
         if (editingItem == null)
-            return BadRequest($"Model with key '{stringKey}' not found.");
+            return CrudError("The selected item could not be found.", componentId);
         var pageState = this.GetPageState();
         var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
         pageState.Set(formStatePartition, FormStateKeys.EditingItem, editingItem);
@@ -91,9 +93,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
@@ -112,18 +115,18 @@ public partial class FormController
         if (editingExistingRecord)
         {
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Update))
-                return Forbid();
+                return AuthorizationError(componentId);
         }
         else
         {
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Create))
-                return Forbid();
+                return AuthorizationError(componentId);
         }
 
         var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem)!;
         var property = typeof(T).GetProperty(propertyName);
         if (property == null)
-            return BadRequest($"Property '{propertyName}' not found.");
+            return ValidationError("The submitted field could not be found.", componentId);
 
         try
         {
@@ -132,7 +135,8 @@ public partial class FormController
         }
         catch (Exception ex)
         {
-            return BadRequest($"Failed to set property '{propertyName}': {ex.Message}");
+            _logger.LogWarning(ex, "Failed to set property {PropertyName} for model type {TypeId}.", propertyName, modelHandler.TypeId);
+            return ValidationError("The submitted value is not valid for this field.", componentId);
         }
 
         pageState.Set(formStatePartition, FormStateKeys.EditingItem, editingItem);
@@ -184,9 +188,10 @@ public partial class FormController
         if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
             return invalidComponent;
 
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
