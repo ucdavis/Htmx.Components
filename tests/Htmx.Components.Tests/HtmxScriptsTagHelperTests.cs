@@ -20,6 +20,7 @@ public class HtmxScriptsTagHelperTests
         Assert.Contains("page-state-headers", html);
         Assert.Contains("table-inline-editing", html);
         Assert.Contains("blur-save-coordination", html);
+        Assert.Contains("request-lifecycle", html);
         Assert.Contains("authentication-retry", html);
     }
 

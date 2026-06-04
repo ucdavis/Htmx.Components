@@ -16,13 +16,13 @@ public class HtmxScriptsTagHelper : TagHelper
 
     /// <summary>
     /// Gets or sets which scripts to include. If null or empty, includes all scripts.
-    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "authentication-retry"
+    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "request-lifecycle", "authentication-retry"
     /// </summary>
     public string? Include { get; set; }
 
     /// <summary>
     /// Gets or sets which scripts to exclude from the default set.
-    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "authentication-retry"
+    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "request-lifecycle", "authentication-retry"
     /// </summary>
     public string? Exclude { get; set; }
 
@@ -70,6 +70,7 @@ public class HtmxScriptsTagHelper : TagHelper
             "page-state-headers",
             "table-inline-editing",
             "blur-save-coordination",
+            "request-lifecycle",
             "authentication-retry"
         };
 
@@ -113,6 +114,7 @@ public class HtmxScriptsTagHelper : TagHelper
             "page-state-headers" => "page-state-headers",
             "table-inline-editing" => "table-inline-editing",
             "blur-save-coordination" => "blur-save-coordination",
+            "request-lifecycle" => "request-lifecycle",
             "authentication-retry" => "authentication-retry",
             _ => null
         };

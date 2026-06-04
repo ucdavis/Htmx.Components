@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Htmx.Components request lifecycle smoke</title>
+  <script>
+    window.htmx = {
+      defineExtension: function () {},
+      onLoad: function (callback) {
+        window.addEventListener("DOMContentLoaded", function () {
+          callback(document.body);
+        });
+      }
+    };
+  </script>
+  <script type="application/json" id="htmx-components-config">
+    { "Scripts": [ "request-lifecycle", "authentication-retry" ] }
+  </script>
+  <script src="/wwwroot/js/htmx-components.js?v=request-lifecycle-smoke" defer></script>
+</head>
+<body>
+  <htmx-request-scope id="scope"
+                      data-hc-pending-disable="scope"
+                      data-hc-request-indicator-selector="find [data-hc-request-indicator]">
+    <div id="indicator" data-hc-request-indicator hidden aria-hidden="true">Loading</div>
+    <section id="stale" data-hc-stale-region>
+      <button id="trigger" type="button">Request</button>
+      <button id="peer" type="button">Peer</button>
+      <a id="pending-link" href="/blocked">Blocked link</a>
+    </section>
+  </htmx-request-scope>
+
+  <button id="auth-one" type="button">Auth one</button>
+  <button id="auth-two" type="button">Auth two</button>
+  <pre id="smoke-result" aria-live="polite">pending</pre>
+
+  <script>
+    const results = [];
+    const authClicks = { one: 0, two: 0 };
+    const popups = [];
+    let pendingLinkClicks = 0;
+
+    document.getElementById("auth-one").addEventListener("click", function () {
+      authClicks.one += 1;
+    });
+
+    document.getElementById("auth-two").addEventListener("click", function () {
+      authClicks.two += 1;
+    });
+
+    document.getElementById("pending-link").addEventListener("click", function () {
+      pendingLinkClicks += 1;
+    });
+
+    window.open = function (url, name, features) {
+      popups.push({ url, name, features });
+      return { closed: false };
+    };
+
+    function assert(condition, message) {
+      if (!condition) {
+        throw new Error(message);
+      }
+    }
+
+    function requestDetail(elt, xhr) {
+      return {
+        elt,
+        xhr,
+        target: document.getElementById("stale"),
+        requestConfig: {
+          path: "/smoke",
+          triggeringEvent: new MouseEvent("click", { bubbles: true, cancelable: true })
+        }
+      };
+    }
+
+    function dispatchHtmx(elt, name, detail) {
+      elt.dispatchEvent(new CustomEvent(name, {
+        bubbles: true,
+        cancelable: true,
+        detail
+      }));
+    }
+
+    function assertPending(message) {
+      assert(document.getElementById("scope").classList.contains("hc-request-pending"), message + ": scope is not pending");
+      assert(document.getElementById("trigger").disabled, message + ": trigger was not disabled");
+      assert(document.getElementById("peer").disabled, message + ": peer was not disabled");
+      assert(document.getElementById("pending-link").classList.contains("hc-pending-disabled"), message + ": link was not pending-disabled");
+      assert(document.getElementById("stale").classList.contains("hc-stale-region"), message + ": stale region was not dimmed");
+      assert(!document.getElementById("indicator").hidden, message + ": indicator was not shown");
+    }
+
+    function assertRestored(message) {
+      assert(!document.getElementById("scope").classList.contains("hc-request-pending"), message + ": scope remained pending");
+      assert(!document.getElementById("trigger").disabled, message + ": trigger remained disabled");
+      assert(!document.getElementById("peer").disabled, message + ": peer remained disabled");
+      assert(!document.getElementById("pending-link").classList.contains("hc-pending-disabled"), message + ": link remained pending-disabled");
+      assert(!document.getElementById("stale").classList.contains("hc-stale-region"), message + ": stale region remained dimmed");
+      assert(document.getElementById("indicator").hidden, message + ": indicator remained visible");
+    }
+
+    async function runOutcome(name, completionEvent) {
+      const trigger = document.getElementById("trigger");
+      const xhr = {};
+      const detail = requestDetail(trigger, xhr);
+      dispatchHtmx(trigger, "htmx:beforeRequest", detail);
+      assertPending(name);
+      dispatchHtmx(trigger, completionEvent, detail);
+      assertRestored(name);
+      results.push(name);
+    }
+
+    async function runSuppressedPendingActivation() {
+      const trigger = document.getElementById("trigger");
+      const pendingLink = document.getElementById("pending-link");
+      const detail = requestDetail(trigger, {});
+      dispatchHtmx(trigger, "htmx:beforeRequest", detail);
+      assertPending("suppressed activation");
+
+      pendingLink.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      assert(pendingLinkClicks === 0, "pending-disabled link accepted a click");
+
+      dispatchHtmx(trigger, "htmx:afterRequest", detail);
+      assertRestored("suppressed activation");
+      results.push("suppressed activation");
+    }
+
+    async function runCanceledRequest() {
+      const trigger = document.getElementById("trigger");
+      const detail = requestDetail(trigger, {});
+      const event = new CustomEvent("htmx:beforeRequest", {
+        bubbles: true,
+        cancelable: true,
+        detail
+      });
+
+      event.preventDefault();
+      trigger.dispatchEvent(event);
+      assertRestored("canceled request");
+      results.push("canceled request");
+    }
+
+    async function runAuthRetry() {
+      const first = document.getElementById("auth-one");
+      const second = document.getElementById("auth-two");
+      const xhrOne = {
+        status: 401,
+        getResponseHeader: function (name) {
+          return name === "X-Auth-Failure" ? "popup-login:/auth/popup-login" : null;
+        }
+      };
+      const xhrTwo = {
+        status: 401,
+        getResponseHeader: function (name) {
+          return name === "X-Auth-Failure" ? "popup-login:/auth/second-login" : null;
+        }
+      };
+      const firstDetail = requestDetail(first, xhrOne);
+      const secondDetail = requestDetail(second, xhrTwo);
+
+      dispatchHtmx(first, "htmx:beforeRequest", firstDetail);
+      dispatchHtmx(first, "htmx:responseError", firstDetail);
+      dispatchHtmx(second, "htmx:beforeRequest", secondDetail);
+      dispatchHtmx(second, "htmx:responseError", secondDetail);
+
+      assert(popups.length === 1, "auth retry opened more than one popup");
+      assert(popups[0].url === "/auth/popup-login", "auth retry used the wrong popup URL");
+
+      window.dispatchEvent(new MessageEvent("message", { data: "login-success" }));
+      await new Promise(function (resolve) {
+        window.setTimeout(resolve, 0);
+      });
+
+      assert(authClicks.one === 1, "auth retry did not replay the original request");
+      assert(authClicks.two === 0, "auth retry replayed a stale request context");
+      results.push("auth retry");
+    }
+
+    window.runRequestLifecycleSmoke = async function () {
+      await runOutcome("success", "htmx:afterRequest");
+      await runOutcome("error", "htmx:responseError");
+      await runOutcome("abort", "htmx:sendAbort");
+      await runOutcome("timeout", "htmx:timeout");
+      await runSuppressedPendingActivation();
+      await runCanceledRequest();
+      await runAuthRetry();
+      return {
+        passed: true,
+        results,
+        popups,
+        authClicks
+      };
+    };
+
+    window.addEventListener("load", async function () {
+      const result = document.getElementById("smoke-result");
+      try {
+        result.textContent = JSON.stringify(await window.runRequestLifecycleSmoke(), null, 2);
+      } catch (error) {
+        result.textContent = JSON.stringify({
+          passed: false,
+          message: error.message,
+          stack: error.stack
+        }, null, 2);
+      }
+    });
+  </script>
+</body>
+</html>

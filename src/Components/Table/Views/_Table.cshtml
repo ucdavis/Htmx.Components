@@ -4,10 +4,18 @@
 @model ITableModel
 
 <htmx-table id="@Model.ComponentId" data-hc-table-component="@Model.ComponentId" class="htmx-table-component flex-1 flex flex-col min-h-0">
-    <htmx-request-scope id="@TableComponentIdentity.ContainerId(Model)" class="relative flex-1 flex flex-col min-h-0">
+    <htmx-request-scope id="@TableComponentIdentity.ContainerId(Model)"
+                        class="relative flex-1 flex flex-col min-h-0"
+                        data-hc-pending-disable="scope"
+                        data-hc-pending-disable-selector="button, input, select, textarea, a, [tabindex]"
+                        data-hc-request-indicator-selector="find [data-hc-request-indicator]">
+        <div class="hc-request-indicator" data-hc-request-indicator hidden aria-hidden="true" style="inset: 50% auto auto 50%; transform: translate(-50%, -50%);">
+            <span class="hc-request-indicator-spinner" aria-hidden="true"></span>
+            <span class="hc-request-indicator-label">Loading</span>
+        </div>
         @await Html.PartialAsync(ViewPaths.Table.EditClassToggle, Model)
         @await Html.PartialAsync(ViewPaths.Table.TableActionList, Model)
-        <table class="table w-full">
+        <table class="table w-full" data-hc-stale-region>
             <thead class="sticky top-[4rem] bg-base-100 z-10">
                 @await Html.PartialAsync(ViewPaths.Table.Header, Model)
                 <tr id="@TableComponentIdentity.FilterRowId(Model)" data-hc-table-filter-row>
@@ -31,9 +39,9 @@
             </thead>
             @await Html.PartialAsync(ViewPaths.Table.Body, Model)
         </table>
+        <htmx-error-region data-hc-error-region class="alert alert-error my-2" hidden></htmx-error-region>
+        <div class="sticky bottom-[4rem] bg-base-100 z-10">
+            @await Html.PartialAsync(ViewPaths.Table.Pagination, Model)
+        </div>
     </htmx-request-scope>
-    <htmx-error-region data-hc-error-region class="alert alert-error my-2" hidden></htmx-error-region>
-    <div class="sticky bottom-[4rem] bg-base-100 z-10">
-        @await Html.PartialAsync(ViewPaths.Table.Pagination, Model)
-    </div>
 </htmx-table>

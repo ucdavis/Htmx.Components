@@ -6,10 +6,13 @@
     "page-state-headers",
     "table-inline-editing",
     "blur-save-coordination",
+    "request-lifecycle",
     "authentication-retry",
   ];
   const pendingBlurRequests = new Set();
-  let authRetryRequestContext = null;
+  const pendingRequestStates = new WeakMap();
+  const pendingElementReferences = new WeakMap();
+  const authRetryRequestContexts = new WeakMap();
   let authRetryInProgress = false;
 
   function getRuntimeConfig() {
@@ -239,6 +242,310 @@
       );
   }
 
+  function installRequestLifecycleUx() {
+    document.addEventListener("click", suppressPendingActivation, true);
+    document.addEventListener("keydown", suppressPendingActivation, true);
+    document.addEventListener("htmx:beforeRequest", startPendingState);
+    document.addEventListener("htmx:afterRequest", restorePendingState);
+    document.addEventListener("htmx:responseError", restorePendingState);
+    document.addEventListener("htmx:sendError", restorePendingState);
+    document.addEventListener("htmx:sendAbort", restorePendingState);
+    document.addEventListener("htmx:timeout", restorePendingState);
+  }
+
+  function startPendingState(event) {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    const detail = event.detail || {};
+    const trigger = detail.elt;
+    const requestKey = getRequestKey(detail);
+
+    if (!(trigger instanceof Element) || !requestKey) {
+      return;
+    }
+
+    restorePendingState(event);
+
+    const scope = resolveRequestScope(trigger, detail);
+    const state = { releases: [] };
+
+    if (scope) {
+      retainPendingReference(state, scope, "scope", function () {
+        const previousBusy = scope.getAttribute("aria-busy");
+        scope.classList.add("hc-request-pending");
+        scope.setAttribute("aria-busy", "true");
+        return { previousBusy };
+      }, function (previous) {
+        scope.classList.remove("hc-request-pending");
+        restoreNullableAttribute(scope, "aria-busy", previous.previousBusy);
+      });
+    }
+
+    const disableMode = getPendingOption(trigger, scope, "pendingDisable", "trigger");
+    disablePendingElements(state, trigger, scope, disableMode);
+    dimStaleRegions(state, trigger, scope, detail);
+    showPendingIndicators(state, trigger, scope);
+
+    pendingRequestStates.set(requestKey, state);
+  }
+
+  function restorePendingState(event) {
+    const requestKey = getRequestKey(event.detail || {});
+
+    if (!requestKey) {
+      return;
+    }
+
+    const state = pendingRequestStates.get(requestKey);
+    if (!state) {
+      return;
+    }
+
+    pendingRequestStates.delete(requestKey);
+
+    for (let index = state.releases.length - 1; index >= 0; index -= 1) {
+      state.releases[index]();
+    }
+  }
+
+  function getRequestKey(detail) {
+    return detail.xhr || detail.requestConfig || null;
+  }
+
+  function resolveRequestScope(trigger, detail) {
+    const selector = trigger.getAttribute("data-hc-request-scope-selector");
+    const configuredScope = selector ? resolveElementSelector(trigger, selector) : null;
+
+    if (configuredScope) {
+      return configuredScope;
+    }
+
+    return trigger.closest("htmx-request-scope, [data-hc-request-scope]")
+      || detail.target?.closest?.("htmx-request-scope, [data-hc-request-scope]")
+      || null;
+  }
+
+  function disablePendingElements(state, trigger, scope, disableMode) {
+    if (disableMode === "none") {
+      return;
+    }
+
+    if (disableMode === "scope" && scope) {
+      const disableSelector = getPendingOption(trigger, scope, "pendingDisableSelector", null)
+        || "button, input, select, textarea, a[href], [tabindex]";
+      const elements = Array.from(scope.querySelectorAll(disableSelector))
+        .filter(function (element) {
+          return element !== scope && !element.hasAttribute("data-hc-no-pending-disable");
+        });
+
+      elements.forEach(function (element) {
+        disableElementForPending(state, element);
+      });
+      return;
+    }
+
+    disableElementForPending(state, trigger);
+  }
+
+  function disableElementForPending(state, element) {
+    retainPendingReference(state, element, "disable", function () {
+      const previousDisabled = element.hasAttribute("disabled");
+      const previousAriaDisabled = element.getAttribute("aria-disabled");
+      const previousTabIndex = element.getAttribute("tabindex");
+
+      if (isDisableableFormElement(element)) {
+        element.disabled = true;
+      } else {
+        element.setAttribute("tabindex", "-1");
+      }
+
+      element.setAttribute("aria-disabled", "true");
+      element.classList.add("hc-pending-disabled");
+
+      return {
+        previousDisabled,
+        previousAriaDisabled,
+        previousTabIndex,
+      };
+    }, function (previous) {
+      if (isDisableableFormElement(element)) {
+        element.disabled = previous.previousDisabled;
+      } else {
+        restoreNullableAttribute(element, "tabindex", previous.previousTabIndex);
+      }
+
+      restoreNullableAttribute(element, "aria-disabled", previous.previousAriaDisabled);
+      element.classList.remove("hc-pending-disabled");
+    });
+  }
+
+  function isDisableableFormElement(element) {
+    return element instanceof HTMLButtonElement
+      || element instanceof HTMLInputElement
+      || element instanceof HTMLSelectElement
+      || element instanceof HTMLTextAreaElement
+      || element instanceof HTMLOptionElement
+      || element instanceof HTMLOptGroupElement
+      || element instanceof HTMLFieldSetElement;
+  }
+
+  function suppressPendingActivation(event) {
+    const target = event.target instanceof Element
+      ? event.target.closest(".hc-pending-disabled")
+      : null;
+
+    if (!target) {
+      return;
+    }
+
+    if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  function dimStaleRegions(state, trigger, scope, detail) {
+    const selector = getPendingOption(trigger, scope, "staleRegionSelector", null);
+    let regions = selector
+      ? resolveElementSelectorAll(trigger, selector, scope)
+      : scope
+        ? Array.from(scope.querySelectorAll("[data-hc-stale-region]"))
+        : [];
+
+    if (regions.length === 0 && detail.target instanceof Element) {
+      regions = [detail.target];
+    }
+
+    regions.forEach(function (region) {
+      retainPendingReference(state, region, "stale", function () {
+        const previousBusy = region.getAttribute("aria-busy");
+        region.classList.add("hc-stale-region");
+        region.setAttribute("aria-busy", "true");
+        return { previousBusy };
+      }, function (previous) {
+        region.classList.remove("hc-stale-region");
+        restoreNullableAttribute(region, "aria-busy", previous.previousBusy);
+      });
+    });
+  }
+
+  function showPendingIndicators(state, trigger, scope) {
+    const selector = getPendingOption(trigger, scope, "requestIndicatorSelector", null);
+    const indicators = selector
+      ? resolveElementSelectorAll(trigger, selector, scope)
+      : scope
+        ? Array.from(scope.querySelectorAll("[data-hc-request-indicator]"))
+        : [];
+
+    indicators.forEach(function (indicator) {
+      retainPendingReference(state, indicator, "indicator", function () {
+        const previousHidden = indicator.hidden;
+        const previousAriaHidden = indicator.getAttribute("aria-hidden");
+
+        indicator.hidden = false;
+        indicator.setAttribute("aria-hidden", "false");
+        indicator.classList.add("hc-request-indicator-active");
+
+        return {
+          previousHidden,
+          previousAriaHidden,
+        };
+      }, function (previous) {
+        indicator.hidden = previous.previousHidden;
+        restoreNullableAttribute(indicator, "aria-hidden", previous.previousAriaHidden);
+        indicator.classList.remove("hc-request-indicator-active");
+      });
+    });
+  }
+
+  function getPendingOption(trigger, scope, optionName, fallback) {
+    const attribute = "data-hc-" + optionName.replace(/[A-Z]/g, function (letter) {
+      return "-" + letter.toLowerCase();
+    });
+
+    if (trigger.hasAttribute(attribute)) {
+      return trigger.getAttribute(attribute);
+    }
+
+    if (scope?.hasAttribute(attribute)) {
+      return scope.getAttribute(attribute);
+    }
+
+    return fallback;
+  }
+
+  function retainPendingReference(state, element, key, apply, restore) {
+    let references = pendingElementReferences.get(element);
+    if (!references) {
+      references = new Map();
+      pendingElementReferences.set(element, references);
+    }
+
+    let entry = references.get(key);
+    if (!entry) {
+      entry = {
+        count: 0,
+        previous: apply(),
+      };
+      references.set(key, entry);
+    }
+
+    entry.count += 1;
+    state.releases.push(function () {
+      entry.count -= 1;
+      if (entry.count > 0) {
+        return;
+      }
+
+      references.delete(key);
+      restore(entry.previous);
+
+      if (references.size === 0) {
+        pendingElementReferences.delete(element);
+      }
+    });
+  }
+
+  function restoreNullableAttribute(element, name, value) {
+    if (value === null) {
+      element.removeAttribute(name);
+      return;
+    }
+
+    element.setAttribute(name, value);
+  }
+
+  function resolveElementSelector(source, selector, scope) {
+    return resolveElementSelectorAll(source, selector, scope)[0] || null;
+  }
+
+  function resolveElementSelectorAll(source, selector, scope) {
+    if (!selector) {
+      return [];
+    }
+
+    if (selector === "this") {
+      return [source];
+    }
+
+    if (selector.startsWith("closest ")) {
+      const result = source.closest(selector.substring("closest ".length));
+      return result ? [result] : [];
+    }
+
+    if (selector.startsWith("find ")) {
+      const root = scope || source;
+      return Array.from(root.querySelectorAll(selector.substring("find ".length)));
+    }
+
+    const root = scope || document;
+    return Array.from(root.querySelectorAll(selector));
+  }
+
   function installAuthenticationRetry() {
     document.body.addEventListener("htmx:beforeRequest", function (event) {
       const config = event.detail.requestConfig;
@@ -248,17 +555,30 @@
         return;
       }
 
-      authRetryRequestContext = {
-        elt: config.elt,
+      const xhr = event.detail.xhr;
+      if (!xhr) {
+        return;
+      }
+
+      authRetryRequestContexts.set(xhr, {
+        elt: event.detail.elt,
         eventType: triggeringEvent.type,
         eventClass: triggeringEvent.constructor.name,
         eventInit: getEventInit(triggeringEvent),
-      };
+      });
     });
 
     document.body.addEventListener("htmx:responseError", async function (event) {
       const xhr = event.detail.xhr;
-      const failureHeader = xhr.getResponseHeader("X-Auth-Failure");
+      if (!xhr) {
+        return;
+      }
+
+      const failureHeader = typeof xhr?.getResponseHeader === "function"
+        ? xhr.getResponseHeader("X-Auth-Failure")
+        : null;
+      const requestContext = authRetryRequestContexts.get(xhr);
+      authRetryRequestContexts.delete(xhr);
 
       if (authRetryInProgress || xhr.status !== 401 || !failureHeader?.startsWith("popup-login:")) {
         return;
@@ -279,14 +599,19 @@
           });
         });
 
-        if (loginSuccess && authRetryRequestContext?.elt) {
-          const { elt, eventType, eventClass, eventInit } = authRetryRequestContext;
+        if (loginSuccess && requestContext?.elt?.isConnected) {
+          const { elt, eventType, eventClass, eventInit } = requestContext;
           const EventCtor = window[eventClass] || Event;
           elt.dispatchEvent(new EventCtor(eventType, eventInit));
         }
       } finally {
         authRetryInProgress = false;
-        authRetryRequestContext = null;
+      }
+    });
+
+    document.body.addEventListener("htmx:afterRequest", function (event) {
+      if (event.detail?.xhr) {
+        authRetryRequestContexts.delete(event.detail.xhr);
       }
     });
   }
@@ -352,6 +677,10 @@
 
   if (scriptEnabled("blur-save-coordination")) {
     installBlurSaveCoordination();
+  }
+
+  if (scriptEnabled("request-lifecycle")) {
+    installRequestLifecycleUx();
   }
 
   if (scriptEnabled("authentication-retry")) {
