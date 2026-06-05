@@ -308,7 +308,13 @@ public class ActionModelBuilder : BuilderBase<ActionModelBuilder, ActionModel>
     /// </summary>
     /// <param name="mode">The pending disable mode.</param>
     /// <returns>The current builder instance for method chaining.</returns>
-    public ActionModelBuilder WithPendingDisable(string mode) => WithAttribute("data-hc-pending-disable", mode);
+    public ActionModelBuilder WithPendingDisable(string mode)
+    {
+        if (mode is not ("trigger" or "scope" or "none"))
+            throw new ArgumentOutOfRangeException(nameof(mode), mode, "Valid values are: trigger, scope, none.");
+
+        return WithAttribute("data-hc-pending-disable", mode);
+    }
 
     /// <summary>
     /// Sets a custom selector for controls disabled when <see cref="WithPendingDisable"/> is configured with "scope".

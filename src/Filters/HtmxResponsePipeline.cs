@@ -48,7 +48,11 @@ internal sealed class HtmxResponsePipeline<T>
         }
         else if (TryCreateFullPageViewResult(context, actionDescriptor, attribute, mutator, out var viewResultTask))
         {
-            context.Result = await viewResultTask;
+            var viewResult = await viewResultTask;
+            if (viewResult is not null)
+            {
+                context.Result = viewResult;
+            }
         }
 
         await next();
@@ -104,7 +108,7 @@ internal sealed class HtmxResponsePipeline<T>
         ControllerActionDescriptor actionDescriptor,
         T attribute,
         IHtmxResponseMutator<T> mutator,
-        out Task<ViewResult> viewResultTask)
+        out Task<ViewResult?> viewResultTask)
     {
         var (hasModel, model) = context.Result switch
         {
@@ -123,7 +127,7 @@ internal sealed class HtmxResponsePipeline<T>
         return true;
     }
 
-    private static async Task<ViewResult> CreateFullPageViewResultAsync(
+    private static async Task<ViewResult?> CreateFullPageViewResultAsync(
         ResultExecutingContext context,
         ControllerActionDescriptor actionDescriptor,
         T attribute,
@@ -131,6 +135,11 @@ internal sealed class HtmxResponsePipeline<T>
         object? model)
     {
         var viewName = await mutator.GetViewNameForNonHtmxRequestAsync(attribute, actionDescriptor);
+        if (viewName is null)
+        {
+            return null;
+        }
+
         var controller = (Controller)context.Controller;
         return new ViewResult
         {

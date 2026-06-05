@@ -53,7 +53,7 @@
 
 .hc-request-indicator {
   align-items: center;
-  background: color-mix(in srgb, currentColor 9%, transparent);
+  background: color-mix(in srgb, currentcolor 9%, transparent);
   border-radius: 0.375rem;
   display: inline-flex;
   font-size: 0.875rem;
@@ -67,7 +67,7 @@
 
 .hc-request-indicator-page {
   background: color-mix(in srgb, var(--color-base-100, Canvas) 88%, transparent);
-  box-shadow: 0 0.75rem 2rem color-mix(in srgb, currentColor 14%, transparent);
+  box-shadow: 0 0.75rem 2rem color-mix(in srgb, currentcolor 14%, transparent);
   inset: 50% auto auto 50%;
   position: fixed;
   transform: translate(-50%, -50%);
@@ -80,7 +80,7 @@
 
 .hc-request-indicator-spinner {
   animation: hc-spin 700ms linear infinite;
-  border: 2px solid currentColor;
+  border: 2px solid currentcolor;
   border-right-color: transparent;
   border-radius: 9999px;
   height: 1rem;

@@ -52,13 +52,13 @@ public static class GenericMethodInvoker
             // Handle void return
             if (method.ReturnType == typeof(void))
             {
-                var lambda = Expression.Lambda<Action<object, object[]>>(callExpr, instanceParam, argsParam);
+                var lambda = Expression.Lambda<Action<object, object?[]>>(callExpr, instanceParam, argsParam);
                 return lambda.CompileFast();
             }
 
             // Handle all other return types
             var converted = Expression.Convert(callExpr, typeof(object));
-            var lambda2 = Expression.Lambda<Func<object, object[], object>>(converted, instanceParam, argsParam);
+            var lambda2 = Expression.Lambda<Func<object, object?[], object>>(converted, instanceParam, argsParam);
             return lambda2.CompileFast();
         });
     }
@@ -161,9 +161,12 @@ public static class GenericMethodInvoker
     {
         if (argumentType == NullArgumentType)
         {
-            return !parameterType.IsValueType || Nullable.GetUnderlyingType(parameterType) is not null
-                ? 0
-                : null;
+            if (parameterType.IsValueType && Nullable.GetUnderlyingType(parameterType) is null)
+            {
+                return null;
+            }
+
+            return -GetTypeSpecificityScore(parameterType);
         }
 
         if (parameterType == argumentType)
@@ -176,18 +179,72 @@ public static class GenericMethodInvoker
             return null;
         }
 
-        var distance = 1;
-        for (var current = argumentType.BaseType; current is not null; current = current.BaseType)
+        return GetAssignabilityDistance(argumentType, parameterType);
+    }
+
+    private static int GetAssignabilityDistance(Type argumentType, Type parameterType)
+    {
+        var visited = new HashSet<Type> { argumentType };
+        var queue = new Queue<(Type Type, int Distance)>();
+        queue.Enqueue((argumentType, 0));
+
+        while (queue.Count > 0)
         {
+            var (current, distance) = queue.Dequeue();
             if (current == parameterType)
             {
                 return distance;
             }
 
-            distance++;
+            foreach (var next in GetDirectAssignableTypes(current))
+            {
+                if (visited.Add(next))
+                {
+                    queue.Enqueue((next, distance + 1));
+                }
+            }
         }
 
-        return distance;
+        return int.MaxValue / 2;
+    }
+
+    private static IEnumerable<Type> GetDirectAssignableTypes(Type type)
+    {
+        if (type.BaseType is not null)
+        {
+            yield return type.BaseType;
+        }
+
+        foreach (var interfaceType in GetMostSpecificInterfaces(type))
+        {
+            yield return interfaceType;
+        }
+    }
+
+    private static IEnumerable<Type> GetMostSpecificInterfaces(Type type)
+    {
+        var interfaces = type.GetInterfaces();
+        var baseInterfaces = type.BaseType?.GetInterfaces() ?? [];
+
+        return interfaces
+            .Except(baseInterfaces)
+            .Where(candidate => !interfaces.Any(other => other != candidate && candidate.IsAssignableFrom(other)));
+    }
+
+    private static int GetTypeSpecificityScore(Type type)
+    {
+        var interfaceDepth = GetMostSpecificInterfaces(type)
+            .Select(GetTypeSpecificityScore)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        if (type.IsInterface)
+        {
+            return 1 + interfaceDepth;
+        }
+
+        var baseDepth = type.BaseType is null ? 0 : 1 + GetTypeSpecificityScore(type.BaseType);
+        return Math.Max(baseDepth, interfaceDepth);
     }
 
     /// <summary>
@@ -203,12 +260,12 @@ public static class GenericMethodInvoker
         object instance,
         string methodName,
         Type[] genericTypes,
-        params object[] parameters)
+        params object?[] parameters)
     {
         var type = instance.GetType();
         var paramTypes = GetParameterTypes(parameters);
         var del = GetOrAddDelegate(type, methodName, genericTypes, paramTypes, false, typeof(void));
-        if (del is Action<object, object[]> action)
+        if (del is Action<object, object?[]> action)
             action(instance, parameters);
         else
             throw new InvalidOperationException("Delegate type not supported for void method.");
@@ -229,12 +286,12 @@ public static class GenericMethodInvoker
         object instance,
         string methodName,
         Type[] genericTypes,
-        params object[] parameters)
+        params object?[] parameters)
     {
         var type = instance.GetType();
         var paramTypes = GetParameterTypes(parameters);
         var del = GetOrAddDelegate(type, methodName, genericTypes, paramTypes, false, typeof(TReturn));
-        if (del is Func<object, object[], object> func)
+        if (del is Func<object, object?[], object> func)
             return (TReturn)func(instance, parameters)!;
         throw new InvalidOperationException("Delegate type not supported for value-returning method.");
     }
@@ -253,7 +310,7 @@ public static class GenericMethodInvoker
         object instance,
         string methodName,
         Type[] genericTypes,
-        params object[] parameters)
+        params object?[] parameters)
     {
         var result = Invoke<object>(instance, methodName, genericTypes, parameters);
         if (result is Task task)
@@ -277,7 +334,7 @@ public static class GenericMethodInvoker
         object instance,
         string methodName,
         Type[] genericTypes,
-        params object[] parameters)
+        params object?[] parameters)
     {
         var result = Invoke<object>(instance, methodName, genericTypes, parameters);
         if (result is Task<TResult> task)

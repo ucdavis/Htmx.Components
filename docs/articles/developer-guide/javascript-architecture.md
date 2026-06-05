@@ -8,7 +8,7 @@ Htmx.Components uses a packaged static web asset runtime delivered through a uni
 
 ### Runtime Location
 The runtime is located in:
-```
+```text
 /wwwroot/js/htmx-components.js
 ```
 

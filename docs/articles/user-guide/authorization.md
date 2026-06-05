@@ -623,4 +623,4 @@ public async Task GetUsers_UnauthorizedUser_ShouldReturnForbidden()
 }
 ```
 
-This comprehensive authorization system provides fine-grained control over access to resources while maintaining flexibility and performance. The system integrates seamlessly with ASP.NET Core's built-in authorization framework while adding powerful resource-operation based permissions specifically designed for HTMX applications.
+This comprehensive authorization system provides fine-grained control over access to resources while maintaining flexibility and performance. The system integrates seamlessly with ASP.NET Core's built-in authorization framework while adding powerful resource-operation-based permissions specifically designed for HTMX applications.

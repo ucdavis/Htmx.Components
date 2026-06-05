@@ -47,7 +47,10 @@ public partial class FormController
     {
         var pageState = this.GetPageState();
         var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
-        var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem)!;
+        var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem);
+        if (editingItem is null)
+            return CrudError("Editing session expired. Refresh and try again.", componentId);
+
         var editingExistingRecord = pageState.Get<bool>(formStatePartition, FormStateKeys.EditingExistingRecord)!;
         var tableModel = await modelHandler.BuildTableModelAsync();
         tableModel.ComponentId = componentId;
@@ -144,13 +147,16 @@ public partial class FormController
         tableModel.ComponentId = componentId;
         var pageState = this.GetPageState();
         var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem);
+        if (editingItem is null)
+            return CrudError("Editing session expired. Refresh and try again.", componentId);
+
         if (pageState.Get<bool>(formStatePartition, FormStateKeys.EditingExistingRecord))
         {
             // Check if the user is authorized to read the item
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
                 return AuthorizationError(componentId);
 
-            var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem)!;
             var editingKey = modelHandler.KeySelectorFunc(editingItem);
 
             var originalItem = await modelHandler.GetQueryable!()

@@ -106,9 +106,21 @@
   }
 
   function syncTables(root) {
-    const tables = root.matches?.("[data-hc-table-component]")
-      ? [root]
-      : Array.from(root.querySelectorAll?.("[data-hc-table-component]") || []);
+    const tables = [];
+    const closestTable = root instanceof Element
+      ? root.closest("[data-hc-table-component]")
+      : null;
+
+    if (closestTable) {
+      tables.push(closestTable);
+    }
+
+    if (root.matches?.("[data-hc-table-component]") && root !== closestTable) {
+      tables.push(root);
+    }
+
+    tables.push(...Array.from(root.querySelectorAll?.("[data-hc-table-component]") || [])
+      .filter((table) => !tables.includes(table)));
 
     tables.forEach(syncTableEditing);
   }
@@ -188,20 +200,25 @@
         focusedInput.blur();
       }
 
-      retryAfterBlur(element);
+      retryAfterBlur({
+        element,
+        eventType: requestConfig.triggeringEvent?.type,
+      });
     });
 
     document.addEventListener("htmx:afterRequest", cleanupBlurRequest);
     document.addEventListener("htmx:responseError", cleanupBlurRequest);
   }
 
-  function retryAfterBlur(element) {
+  function retryAfterBlur(request) {
     const maxRetries = 40;
     let retryCount = 0;
+    const element = request.element;
+    const eventType = request.eventType || (element instanceof HTMLFormElement ? "submit" : "click");
 
     const retry = function () {
       if (pendingBlurRequests.size === 0) {
-        htmx.trigger(element, "click");
+        replayDeferredRequest(element, eventType);
         return;
       }
 
@@ -212,10 +229,18 @@
       }
 
       console.warn("Blur-Save coordination timed out waiting for blur requests to complete.");
-      htmx.trigger(element, "click");
+      replayDeferredRequest(element, eventType);
     };
 
     window.setTimeout(retry, 25);
+  }
+
+  function replayDeferredRequest(element, eventType) {
+    if (!element?.isConnected) {
+      return;
+    }
+
+    htmx.trigger(element, element instanceof HTMLFormElement ? "submit" : eventType);
   }
 
   function cleanupBlurRequest(event) {
@@ -759,15 +784,42 @@
 
       try {
         const loginUrl = failureHeader.substring("popup-login:".length);
-        window.open(loginUrl, "authPopup", "width=600,height=700");
+        const popup = window.open(loginUrl, "authPopup", "width=600,height=700");
 
         const loginSuccess = await new Promise(function (resolve) {
-          window.addEventListener("message", function listener(messageEvent) {
-            if (messageEvent.data === "login-success") {
-              window.removeEventListener("message", listener);
-              resolve(true);
+          let completed = false;
+          const timeoutMs = 30000;
+          let closeTimer = 0;
+          let timeoutTimer = 0;
+
+          function finish(success) {
+            if (completed) {
+              return;
             }
-          });
+
+            completed = true;
+            window.removeEventListener("message", listener);
+            window.clearInterval(closeTimer);
+            window.clearTimeout(timeoutTimer);
+            resolve(success);
+          }
+
+          function listener(messageEvent) {
+            if (messageEvent.data === "login-success") {
+              finish(true);
+            }
+          }
+
+          closeTimer = window.setInterval(function () {
+            if (popup?.closed) {
+              finish(false);
+            }
+          }, 250);
+          timeoutTimer = window.setTimeout(function () {
+            finish(false);
+          }, timeoutMs);
+
+          window.addEventListener("message", listener);
         });
 
         if (loginSuccess && requestContext?.elt?.isConnected) {

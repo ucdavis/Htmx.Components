@@ -35,7 +35,7 @@ public class HtmxScriptsTagHelperTests
         });
         var html = output.Content.GetContent();
 
-        Assert.Contains("page-state-headers", html);
+        Assert.DoesNotContain("page-state-headers", html);
         Assert.Contains("table-inline-editing", html);
         Assert.DoesNotContain("blur-save-coordination", html);
         Assert.DoesNotContain("error-handling", html);

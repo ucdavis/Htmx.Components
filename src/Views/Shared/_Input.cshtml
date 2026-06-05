@@ -62,7 +62,7 @@
         {
             <textarea name="value" id="@(id)" 
             class="textarea textarea-bordered w-full" 
-            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='@hxVals'>@Html.Encode(Model.Value?.ToString())</textarea>
+            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='@hxVals'>@Model.Value</textarea>
             break;
         }
         case InputKind.Text:

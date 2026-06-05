@@ -39,17 +39,31 @@ public class GenericMethodInvokerTests
     }
 
     [Fact]
-    public void Invoke_ThrowsForAmbiguousNullArgument()
+    public void Invoke_ResolvesNullArgumentToMostSpecificParameterType()
     {
         var target = new GenericInvocationTarget();
 
-        var ex = Assert.Throws<InvalidOperationException>(() => GenericMethodInvoker.Invoke<string>(
+        var result = GenericMethodInvoker.Invoke<string>(
             target,
             nameof(GenericInvocationTarget.Echo),
             [],
-            (object?)null!));
+            (object?)null!);
 
-        Assert.Contains("ambiguous", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("string:", result);
+    }
+
+    [Fact]
+    public void Invoke_ResolvesInterfaceOverloadToMostSpecificParameterType()
+    {
+        var target = new GenericInvocationTarget();
+
+        var result = GenericMethodInvoker.Invoke<string>(
+            target,
+            nameof(GenericInvocationTarget.DescribeItems),
+            [],
+            new List<int> { 1, 2 });
+
+        Assert.Equal("readonly-list:2", result);
     }
 
     private sealed class GenericInvocationTarget
@@ -57,6 +71,8 @@ public class GenericMethodInvokerTests
         public string Echo(string value) => $"string:{value}";
         public string Echo(int value) => $"int:{value}";
         public string Echo(object value) => $"object:{value}";
+        public string DescribeItems(IEnumerable<int> values) => $"enumerable:{values.Count()}";
+        public string DescribeItems(IReadOnlyList<int> values) => $"readonly-list:{values.Count}";
 
         public Task<string> DescribeAsync<T, TKey>(GenericBox<T, TKey> box)
             where T : class

@@ -75,6 +75,8 @@ public class HtmxScriptsTagHelper : TagHelper
             "authentication-retry"
         };
 
+        IEnumerable<string> scripts = allScripts;
+
         // If Include is specified, only include those
         if (!string.IsNullOrWhiteSpace(Include))
         {
@@ -84,11 +86,8 @@ public class HtmxScriptsTagHelper : TagHelper
                 .Where(s => s != null)
                 .ToHashSet();
 
-            return allScripts.Where(s => includeList.Contains(s));
+            scripts = scripts.Where(s => includeList.Contains(s));
         }
-
-        // Start with all scripts
-        var scripts = allScripts.AsEnumerable();
 
         // Remove excluded scripts
         if (!string.IsNullOrWhiteSpace(Exclude))

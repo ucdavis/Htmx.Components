@@ -207,10 +207,6 @@ public class MultiSwapViewResult : IActionResult
         
         if (!string.IsNullOrWhiteSpace(htmxViewInfo.TargetSelector))
         {
-            if (!IsSafeTargetSelector(htmxViewInfo.TargetSelector))
-            {
-                throw new ArgumentException("TargetSelector contains invalid characters for a CSS query selector.");
-            }
             targetSelector = ":" + htmxViewInfo.TargetSelector;
         }
 
@@ -352,11 +348,6 @@ public class MultiSwapViewResult : IActionResult
         }
 
         return false;
-    }
-
-    private static bool IsSafeTargetSelector(string selector)
-    {
-        return selector.All(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' or '#' or '.' or ':' or ' ' or '[' or ']' or '=');
     }
 
     private static bool IsHtmlNameStart(char ch)

@@ -137,6 +137,22 @@ public class ResultFilterTests
         Assert.False(filter.WasMutated);
     }
 
+    [Fact]
+    public async Task OobResultFilterBase_LeavesNonHtmxObjectResultUnchangedWhenNoViewConfigured()
+    {
+        var result = new OkObjectResult(new Widget { Id = 10, Name = "Gamma" });
+        var context = CreateResultExecutingContext(result);
+        context.ActionDescriptor = new ControllerActionDescriptor
+        {
+            MethodInfo = typeof(FilterTestController).GetMethod(nameof(FilterTestController.PipelineObject))!
+        };
+        var filter = new PipelineTestFilter { ViewName = null };
+
+        await filter.OnResultExecutionAsync(context, Next(context));
+
+        Assert.Same(result, context.Result);
+    }
+
     private static ResultExecutingContext CreateResultExecutingContext(IActionResult result)
     {
         var actionContext = MultiSwapViewResultTests.CreateActionContext();
@@ -183,12 +199,13 @@ public class ResultFilterTests
     private sealed class PipelineTestFilter : OobResultFilterBase<PipelineTestAttribute>
     {
         public bool WasMutated { get; private set; }
+        public string? ViewName { get; init; } = "_PipelineFull";
 
         protected override Task<string?> GetViewNameForNonHtmxRequest(
             PipelineTestAttribute attribute,
             ControllerActionDescriptor cad)
         {
-            return Task.FromResult<string?>("_PipelineFull");
+            return Task.FromResult(ViewName);
         }
 
         protected override Task UpdateMultiSwapViewResultAsync(

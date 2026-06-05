@@ -24,4 +24,13 @@ public class ActionModelBuilderTests
         Assert.Equal("button, input", action.Attributes["data-hc-pending-disable-selector"]);
         Assert.Equal("find [data-hc-stale-region]", action.Attributes["data-hc-stale-region-selector"]);
     }
+
+    [Fact]
+    public void WithPendingDisable_RejectsUnknownModes()
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var builder = new ActionModelBuilder(services);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => builder.WithPendingDisable("button"));
+    }
 }

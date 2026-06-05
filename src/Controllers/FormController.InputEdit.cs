@@ -102,7 +102,7 @@ public partial class FormController
             this,
             nameof(SetValueImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            propertyName, value ?? string.Empty, scopedComponentId, modelHandler);
+            propertyName, value, scopedComponentId, modelHandler);
         return result!;
     }
 
@@ -111,6 +111,10 @@ public partial class FormController
     {
         var pageState = this.GetPageState();
         var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem);
+        if (editingItem is null)
+            return CrudError("Editing session expired. Refresh and try again.", componentId);
+
         var editingExistingRecord = pageState.Get<bool>(formStatePartition, FormStateKeys.EditingExistingRecord)!;
         if (editingExistingRecord)
         {
@@ -123,7 +127,6 @@ public partial class FormController
                 return AuthorizationError(componentId);
         }
 
-        var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem)!;
         var property = typeof(T).GetProperty(propertyName);
         if (property == null)
             return ValidationError("The submitted field could not be found.", componentId);
@@ -205,6 +208,9 @@ public partial class FormController
         ModelHandler<T, TKey> modelHandler)
         where T : class
     {
-        throw new NotImplementedException("This method is not implemented yet.");
+        if (string.IsNullOrWhiteSpace(propertyName) || string.IsNullOrWhiteSpace(componentId))
+            return Task.FromResult<IActionResult>(BadRequest("Invalid value change request."));
+
+        return Task.FromResult<IActionResult>(NoContent());
     }
 }

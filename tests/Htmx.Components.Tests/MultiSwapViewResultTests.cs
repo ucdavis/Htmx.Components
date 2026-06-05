@@ -26,12 +26,16 @@ public class MultiSwapViewResultTests
     }
 
     [Fact]
-    public async Task ExecuteResultAsync_RejectsUnsafeTargetSelectors()
+    public async Task ExecuteResultAsync_AllowsCssTargetSelectors()
     {
+        var context = CreateActionContext();
         var result = new MultiSwapViewResult()
-            .WithOobContent("_Panel", new Targetable("div>script", OobTargetDisposition.OuterHtml));
+            .WithOobContent("_Panel", new Targetable("""tbody > tr[data-id="x"]:nth-child(2)""", OobTargetDisposition.OuterHtml));
 
-        await Assert.ThrowsAsync<ArgumentException>(() => result.ExecuteResultAsync(CreateActionContext()));
+        await result.ExecuteResultAsync(context);
+
+        var body = await ReadBodyAsync(context.HttpContext.Response);
+        Assert.Contains("hx-swap-oob=\"outerHTML:tbody > tr[data-id=\"x\"]:nth-child(2)\"", body);
     }
 
     [Fact]

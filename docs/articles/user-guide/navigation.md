@@ -31,7 +31,7 @@ public class AdminController : Controller
 {
     [HttpGet("Products")]
     [NavAction(DisplayName = "Products", Icon = "fas fa-boxes-stacked", Order = 0, PushUrl = true, ViewName = "_Products")]
-    public async Task<IActionResult> Products()
+    public IActionResult Products()
     {
         // Your logic here
         return Ok(new { });
@@ -77,9 +77,9 @@ public class HomeController : Controller
 public class CatalogController : Controller
 {
     [NavAction(DisplayName = "Products", Icon = "fas fa-box", Order = 1, PushUrl = true, ViewName = "_Products")]
-    public async Task<IActionResult> Products()
+    public IActionResult Products()
     {
-        // Catalog logic here
+        var tableModel = new { };
         return Ok(tableModel);
     }
 }
