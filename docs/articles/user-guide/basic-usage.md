@@ -13,7 +13,7 @@ For setup instructions, see the **[Getting Started Guide](../getting-started.md)
 
 ### JavaScript Behaviors
 
-The `<htmx-scripts>` TagHelper provides a unified way to include JavaScript behaviors:
+The `<htmx-scripts>` TagHelper provides a unified way to include the packaged Htmx.Components browser runtime:
 
 ```html
 <!-- Include all behaviors (default) -->
@@ -35,6 +35,12 @@ The `<htmx-scripts>` TagHelper provides a unified way to include JavaScript beha
 - `authentication-retry`: Handles authentication retry with popup windows
 
 The behaviors are delivered by the packaged `htmx-components.js` static web asset with a small JSON configuration block emitted by the TagHelper.
+
+The default runtime also registers the first-party custom elements used by components:
+
+- `htmx-table`: scopes table identity, edit state, and table lifecycle events
+- `htmx-request-scope`: applies pending UI to the relevant region during HTMX requests
+- `htmx-error-region`: receives safe, user-facing HTMX error messages
 
 ## 3. Set Up Tailwind CSS (Recommended)
 

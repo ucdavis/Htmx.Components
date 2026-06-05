@@ -21,6 +21,14 @@ The runtime is located in:
 - **error-handling**: Routes expected HTMX failures to scoped or global error regions
 - **authentication-retry**: Handles popup-based authentication retry for 401 errors
 
+### Custom Elements
+
+The runtime registers lightweight custom elements that let server-rendered markup opt into scoped behavior without page-local scripts:
+
+- `htmx-table`: table component root; carries the stable table component id and dispatches table lifecycle events
+- `htmx-request-scope`: nearest request boundary for pending state, indicators, stale regions, and disabled controls
+- `htmx-error-region`: local or global destination for safe error messages
+
 ## Usage
 
 ### Include All Scripts (Default)
@@ -101,3 +109,18 @@ Each behavior is installed from the packaged runtime:
 | `request-lifecycle` | Pending UI behavior |
 | `error-handling` | Scoped/global HTMX error display |
 | `authentication-retry` | Authentication handling |
+
+### Request Lifecycle Contract
+
+`request-lifecycle` watches HTMX request events and resolves the nearest `htmx-request-scope` from the trigger or target. Within that scope it can:
+
+- Disable the trigger or the configured selector through `data-hc-pending-disable`
+- Show a request indicator selected by `data-hc-request-indicator-selector`
+- Mark stale regions selected by `data-hc-stale-region-selector`
+- Restore all pending state after success, response error, send error, abort, or timeout
+
+Elements can opt out of scope-level disabling with `data-hc-no-pending-disable`.
+
+### Error Handling Contract
+
+`error-handling` clears a scope's error region before a new request and renders user-safe messages for `htmx:responseError`, `htmx:sendError`, `htmx:timeout`, and `htmx:swapError`. It prefers the nearest scoped `htmx-error-region` and falls back to a global region marked with `data-hc-global-error-region`.

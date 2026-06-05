@@ -272,6 +272,8 @@ The framework includes a JavaScript delivery system that enables server-side beh
 - `error-handling`: Scoped/global error display
 - `authentication-retry`: Authentication retry handling
 
+**Custom Elements**: Server-rendered components use `htmx-table`, `htmx-request-scope`, and `htmx-error-region` to scope table identity, pending UI, and safe error display without page-specific inline scripts.
+
 **Benefits:**
 - **Static Asset Delivery**: The runtime is versioned and cacheable
 - **Selective Inclusion**: Choose which behaviors to include per page
@@ -319,6 +321,8 @@ Client State → HTTP Header → PageStateMiddleware → IPageState → Result F
 3. Controllers modify state during processing
 4. Result filter detects state changes
 5. OOB updates sync client-side state
+
+Table state and form edit state are partitioned by stable component id. The page still has one encrypted `page_state` transport input, but each table reads and writes keys under its own component-scoped partition.
 
 ## Extension Points
 

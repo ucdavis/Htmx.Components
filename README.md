@@ -9,10 +9,10 @@ A comprehensive ASP.NET Core library for building interactive web applications w
 ## ✨ What You Get
 
 - 🚀 **Ready-to-use components**: Tables, navigation, auth status, forms
-- 🔧 **HTMX integration**: Out-of-band updates, multi-swap responses, page state
+- 🔧 **HTMX integration**: Scoped out-of-band updates, multi-swap responses, page state
 - 🛡️ **Authorization system**: Resource-based permissions with ASP.NET Core integration  
 - 📱 **Responsive design**: Built for DaisyUI/Tailwind CSS
-- ⚡ **Automatic partial updates**: Smart filters handle HTMX updates behind the scenes
+- ⚡ **Automatic partial updates**: Smart filters and a packaged browser runtime handle HTMX updates behind the scenes
 
 ## 🚀 Quick Example
 
@@ -51,7 +51,7 @@ public class AdminController : Controller
 @await Component.InvokeAsync("AuthStatus")
 @await Component.InvokeAsync("Table", Model)
 
-<htmx-scripts></htmx-scripts> <!-- JavaScript behaviors -->
+<htmx-scripts></htmx-scripts> <!-- Packaged runtime behaviors -->
 <htmx-page-state></htmx-page-state> <!-- State management -->
 ```
 

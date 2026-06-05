@@ -4,7 +4,7 @@ Htmx.Components provides seamless integration with ASP.NET Core authentication a
 
 ## Basic Authentication Setup
 
-Htmx.Components works with any ASP.NET Core authentication scheme. Here's a real example from CruSibyl.Web using OpenID Connect:
+Htmx.Components works with any ASP.NET Core authentication scheme. Here's an OpenID Connect example:
 
 ```csharp
 builder.Services.AddAuthentication(options =>
@@ -137,16 +137,16 @@ public IActionResult Logout()
 Navigation items are automatically filtered based on user permissions:
 
 ```csharp
-[Route("Admin")]
-[NavActionGroup(DisplayName = "Admin", Icon = "fas fa-cogs", Order = 2)]
-public class AdminController : Controller
+[Route("Users")]
+[NavActionGroup(DisplayName = "Users", Icon = "fas fa-users", Order = 2)]
+public class UsersController : Controller
 {
-    [HttpGet("AdminUsers")]
-    [Authorize(Policy = "SystemAccess")]
-    [NavAction(DisplayName = "Admin Users", Icon = "fas fa-users-cog", Order = 1)]
-    public async Task<IActionResult> AdminUsers()
+    [HttpGet("Manage")]
+    [Authorize(Policy = "CanManageUsers")]
+    [NavAction(DisplayName = "Manage Users", Icon = "fas fa-users-cog", Order = 1)]
+    public async Task<IActionResult> Manage()
     {
-        // Only users with SystemAccess policy can see and access this
+        // Only users with CanManageUsers policy can see and access this
         return Ok(tableModel);
     }
 }
@@ -191,102 +191,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 2. **Authorization Attributes**: Use standard ASP.NET Core authorization attributes on controllers and actions
 3. **Status Updates**: Use `[AuthStatusUpdate]` on actions that change authentication state
 
-## Next Steps
-
-- **[Authorization](authorization.md)**: Learn about setting up authorization policies and permissions
-- **[Navigation](navigation.md)**: Understand how navigation integrates with authentication
-- **[Tables](tables.md)**: See how tables respect authorization rules
-    foreach (var role in roles)
-    {
-        identity.AddClaim(new Claim(ClaimTypes.Role, role));
-    }
-    
-    return identity;
-}
-```
-
-### User Service Integration
-
-Create a user service for profile management:
-
-```csharp
-public interface IUserService
-{
-    Task<UserProfile> GetUserProfileAsync(string userId);
-    Task<bool> UpdateProfileAsync(string userId, UserProfile profile);
-}
-
-public class UserService : IUserService
-{
-    private readonly ApplicationDbContext _context;
-
-    public UserService(ApplicationDbContext context)
-    {
-        _context = context;
-    }
-
-    public async Task<UserProfile> GetUserProfileAsync(string userId)
-    {
-        var user = await _context.Users
-            .Where(u => u.Id == userId)
-            .Select(u => new UserProfile
-            {
-                Id = u.Id,
-                DisplayName = u.DisplayName,
-                Email = u.Email,
-                AvatarUrl = u.AvatarUrl,
-                LastLoginAt = u.LastLoginAt
-            })
-            .FirstOrDefaultAsync();
-            
-        return user ?? new UserProfile();
-    }
-}
-```
-
-## Multi-Tenant Authentication
-
-### Tenant Resolution
-
-Implement tenant resolution for multi-tenant applications:
-
-```csharp
-public class TenantAuthStatusProvider : IAuthStatusProvider
-{
-    private readonly ITenantService _tenantService;
-
-    public async Task<AuthStatusViewModel> GetAuthStatusAsync(ClaimsPrincipal user)
-    {
-        if (user?.Identity?.IsAuthenticated != true)
-            return new AuthStatusViewModel { IsAuthenticated = false };
-
-        var tenantId = user.FindFirst("TenantId")?.Value;
-        var tenant = await _tenantService.GetTenantAsync(tenantId);
-
-        return new AuthStatusViewModel
-        {
-            IsAuthenticated = true,
-            UserName = $"{user.Identity.Name} ({tenant?.Name})",
-            ProfileImageUrl = tenant?.LogoUrl
-        };
-    }
-}
-```
-
 ## Security Considerations
-
-### CSRF Protection
-
-HTMX Components automatically handles CSRF tokens:
-
-```html
-<!-- CSRF tokens are automatically included in HTMX requests -->
-<button hx-post="/api/secure-action">Secure Action</button>
-```
 
 ### Session Security
 
-Configure secure session options:
+Configure secure session options when your application uses session state:
 
 ```csharp
 builder.Services.AddSession(options =>
@@ -300,14 +209,14 @@ builder.Services.AddSession(options =>
 
 ### Content Security Policy
 
-Configure CSP for HTMX compatibility:
+The packaged runtime is served from your application under `/_content/Htmx.Components/`. If you use the popup-login view shown above, account for that inline script with a nonce or a narrowly scoped CSP exception.
 
 ```csharp
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.Add("Content-Security-Policy", 
+    context.Response.Headers.Add("Content-Security-Policy",
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
+        "script-src 'self' 'unsafe-inline'; " +
         "style-src 'self' 'unsafe-inline';");
     await next();
 });
@@ -326,11 +235,11 @@ If users get stuck in authentication loops:
 ### HTMX Auth Popup Not Working
 
 1. Verify the popup configuration is correct
-2. Check that JavaScript event handlers are registered
-3. Ensure popup blockers aren't interfering
+2. Check that `<htmx-scripts></htmx-scripts>` includes `authentication-retry`
+3. Ensure popup blockers are not interfering
 
-### Claims Not Available
+## Next Steps
 
-1. Check that claims are properly added during authentication
-2. Verify claim transformations are working
-3. Ensure user service is correctly resolving user data
+- **[Authorization](authorization.md)**: Learn about setting up authorization policies and permissions
+- **[Navigation](navigation.md)**: Understand how navigation integrates with authentication
+- **[Tables](tables.md)**: See how tables respect authorization rules

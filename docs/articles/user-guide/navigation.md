@@ -29,17 +29,17 @@ Group related actions together:
 [NavActionGroup(DisplayName = "Admin", Icon = "fas fa-cogs", Order = 2)]
 public class AdminController : Controller
 {
-    [HttpGet("Repos")]
-    [NavAction(DisplayName = "Repos", Icon = "fas fa-database", Order = 0, PushUrl = true, ViewName = "_Repos")]
-    public async Task<IActionResult> Repos()
+    [HttpGet("Products")]
+    [NavAction(DisplayName = "Products", Icon = "fas fa-boxes-stacked", Order = 0, PushUrl = true, ViewName = "_Products")]
+    public async Task<IActionResult> Products()
     {
         // Your logic here
         return Ok(new { });
     }
     
-    [HttpGet("AdminUsers")]
-    [NavAction(DisplayName = "Admin Users", Icon = "fas fa-users-cog", Order = 1, PushUrl = true, ViewName = "_AdminUsers")]
-    public async Task<IActionResult> AdminUsers()
+    [HttpGet("Users")]
+    [NavAction(DisplayName = "Users", Icon = "fas fa-users-cog", Order = 1, PushUrl = true, ViewName = "_Users")]
+    public async Task<IActionResult> Users()
     {
         // Your logic here
         return Ok(new { });
@@ -57,15 +57,13 @@ public class AdminController : Controller
 | `PushUrl` | Whether to update browser URL | true/false |
 | `ViewName` | View to render for the action | "_Content" |
 
-## Real-World Examples
+## Example Groups
 
-Here are actual examples from CruSibyl.Web:
-
-### Dashboard Controller
+### Home Controller
 ```csharp
-public class DashboardController : Controller
+public class HomeController : Controller
 {
-    [NavAction(DisplayName = "Dashboard", Icon = "fas fa-tachometer-alt", Order = 0, PushUrl = true, ViewName = "_Content")]
+    [NavAction(DisplayName = "Home", Icon = "fas fa-home", Order = 0, PushUrl = true, ViewName = "_Content")]
     public IActionResult Index()
     {
         return Ok(new { });
@@ -73,15 +71,15 @@ public class DashboardController : Controller
 }
 ```
 
-### Reports Controller Group
+### Catalog Controller Group
 ```csharp
-[NavActionGroup(DisplayName = "Reports", Icon = "fas fa-chart-bar", Order = 1)]
-public class ReportsController : Controller
+[NavActionGroup(DisplayName = "Catalog", Icon = "fas fa-boxes-stacked", Order = 1)]
+public class CatalogController : Controller
 {
-    [NavAction(Icon = "fas fa-database", Order = 1, PushUrl = true, ViewName = "_PackageVersions")]
-    public async Task<IActionResult> PackageVersions()
+    [NavAction(DisplayName = "Products", Icon = "fas fa-box", Order = 1, PushUrl = true, ViewName = "_Products")]
+    public async Task<IActionResult> Products()
     {
-        // Report logic here
+        // Catalog logic here
         return Ok(tableModel);
     }
 }
@@ -93,21 +91,21 @@ public class ReportsController : Controller
 [NavActionGroup(DisplayName = "Admin", Icon = "fas fa-cogs", Order = 2)]
 public class AdminController : Controller
 {
-    [HttpGet("Repos")]
-    [NavAction(DisplayName = "Repos", Icon = "fas fa-database", Order = 0, PushUrl = true, ViewName = "_Repos")]
-    public async Task<IActionResult> Repos()
+    [HttpGet("Products")]
+    [NavAction(DisplayName = "Products", Icon = "fas fa-box", Order = 0, PushUrl = true, ViewName = "_Products")]
+    public async Task<IActionResult> Products()
     {
-        var modelHandler = await _modelHandlerFactory.Get<Repo, int>(nameof(Repo), ModelUI.Table);
+        var modelHandler = await _modelHandlerFactory.Get<Product, int>(nameof(Product), ModelUI.Table);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync();
         return Ok(tableModel);
     }
 
-    [HttpGet("AdminUsers")]
-    [Authorize(Policy = AccessPolicies.SystemAccess)]
-    [NavAction(DisplayName = "Admin Users", Icon = "fas fa-users-cog", Order = 1, PushUrl = true, ViewName = "_AdminUsers")]
-    public async Task<IActionResult> AdminUsers()
+    [HttpGet("Users")]
+    [Authorize(Policy = "CanManageUsers")]
+    [NavAction(DisplayName = "Users", Icon = "fas fa-users-cog", Order = 1, PushUrl = true, ViewName = "_Users")]
+    public async Task<IActionResult> Users()
     {
-        var modelHandler = await _modelHandlerFactory.Get<AdminUserModel, int>(nameof(AdminUserModel), ModelUI.Table);
+        var modelHandler = await _modelHandlerFactory.Get<UserSummary, int>(nameof(UserSummary), ModelUI.Table);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync();
         return Ok(tableModel);
     }
@@ -130,9 +128,9 @@ Include the navigation in your layout:
 Navigation items are automatically filtered based on user permissions using standard ASP.NET Core authorization:
 
 ```csharp
-[Authorize(Policy = AccessPolicies.SystemAccess)]
-[NavAction(DisplayName = "Admin Users", Icon = "fas fa-users-cog")]
-public IActionResult AdminUsers() => Ok(new { });
+[Authorize(Policy = "CanManageUsers")]
+[NavAction(DisplayName = "Users", Icon = "fas fa-users-cog")]
+public IActionResult Users() => Ok(new { });
 ```
 
 Only navigation items the user is authorized to access will be displayed in the navigation menu.
