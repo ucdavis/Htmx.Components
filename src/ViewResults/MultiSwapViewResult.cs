@@ -207,7 +207,7 @@ public class MultiSwapViewResult : IActionResult
         
         if (!string.IsNullOrWhiteSpace(htmxViewInfo.TargetSelector))
         {
-            targetSelector = ":" + htmxViewInfo.TargetSelector;
+            targetSelector = ":" + HtmlEncoder.Default.Encode(htmxViewInfo.TargetSelector);
         }
 
         if (!TryFindFirstStartTag(html, out var tagStart, out var tagEnd, out var insertionIndex))

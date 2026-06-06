@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using Htmx.Components.Models;
 using Htmx.Components.ViewResults;
 using Microsoft.AspNetCore.Http;
@@ -29,13 +30,18 @@ public class MultiSwapViewResultTests
     public async Task ExecuteResultAsync_AllowsCssTargetSelectors()
     {
         var context = CreateActionContext();
+        var targetSelector = """tbody > tr[data-id="x"]:nth-child(2)""";
+        var targetable = new Targetable(targetSelector, OobTargetDisposition.OuterHtml);
         var result = new MultiSwapViewResult()
-            .WithOobContent("_Panel", new Targetable("""tbody > tr[data-id="x"]:nth-child(2)""", OobTargetDisposition.OuterHtml));
+            .WithOobContent("_Panel", targetable);
 
         await result.ExecuteResultAsync(context);
 
         var body = await ReadBodyAsync(context.HttpContext.Response);
-        Assert.Contains("hx-swap-oob=\"outerHTML:tbody > tr[data-id=\"x\"]:nth-child(2)\"", body);
+        Assert.Equal(targetSelector, targetable.TargetSelector);
+        var expectedAttribute = $"hx-swap-oob=\"outerHTML:{HtmlEncoder.Default.Encode(targetSelector)}\"";
+        Assert.Contains("&quot;", expectedAttribute);
+        Assert.Contains(expectedAttribute, body);
     }
 
     [Fact]
