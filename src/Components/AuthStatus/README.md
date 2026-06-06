@@ -47,11 +47,11 @@ The component includes its own CSS file that should be included in your layout:
 The component includes JavaScript enhancements delivered through the `htmx-scripts` TagHelper:
 
 ```html
-<!-- Include all behaviors (includes auth-retry) -->
+<!-- Include all behaviors (includes authentication-retry) -->
 <htmx-scripts></htmx-scripts>
 
-<!-- Include only auth-retry behavior -->
-<htmx-scripts include="auth-retry"></htmx-scripts>
+<!-- Include only authentication-retry behavior -->
+<htmx-scripts include="authentication-retry"></htmx-scripts>
 ```
 
-The `auth-retry` behavior provides seamless authentication retry functionality with popup windows.
+The `authentication-retry` behavior provides seamless authentication retry functionality with popup windows.

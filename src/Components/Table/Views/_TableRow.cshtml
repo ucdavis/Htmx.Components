@@ -1,4 +1,5 @@
 @using Htmx.Components.Table.Models
+@using Htmx.Components.Table
 @model (ITableModel table, ITableRowContext row)
 @inject Htmx.Components.Models.ViewPaths ViewPaths
 
@@ -6,7 +7,7 @@
   var isEditing = Model.row.IsEditing;
 }
 
-<tr id="@Model.row.RowId" class="@(isEditing ? "editing-row" : "")">
+<tr id="@TableComponentIdentity.RowId(Model.table, Model.row)" class="@(isEditing ? "editing-row" : "")">
   @foreach (var column in Model.table.Columns)
   {
     var cellPartialView = string.IsNullOrEmpty(column.CellPartialView)

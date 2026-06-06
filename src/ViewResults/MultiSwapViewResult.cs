@@ -1,6 +1,5 @@
 using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using Htmx.Components.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -190,12 +189,8 @@ public class MultiSwapViewResult : IActionResult
         }
     }
 
-    private static string AddHxSwapToOuterElement(string html, HtmxViewInfo htmxViewInfo)
+    internal static string AddHxSwapToOuterElement(string html, HtmxViewInfo htmxViewInfo)
     {
-        // Use a regex to identify the outermost tag and add hx-swap-oob="true" to it
-        var regex = new Regex(@"<(\w+)([^>]*)>");
-        var match = regex.Match(html);
-
         var targetDisposition = htmxViewInfo.TargetDisposition switch
         {
             OobTargetDisposition.OuterHtml => "outerHTML",
@@ -212,31 +207,157 @@ public class MultiSwapViewResult : IActionResult
         
         if (!string.IsNullOrWhiteSpace(htmxViewInfo.TargetSelector))
         {
-            if (!Regex.IsMatch(htmxViewInfo.TargetSelector, @"^[a-zA-Z0-9\-_#.: \[\]=]*$"))
-            {
-                throw new ArgumentException("TargetSelector contains invalid characters for a CSS query selector.");
-            }
-            targetSelector = ":" + htmxViewInfo.TargetSelector;
+            targetSelector = ":" + HtmlEncoder.Default.Encode(htmxViewInfo.TargetSelector);
         }
 
-        if (match.Success)
+        if (!TryFindFirstStartTag(html, out var tagStart, out var tagEnd, out var insertionIndex))
         {
-            // Check if the outermost tag already contains hx-swap-oob
-            if (!match.Value.Contains("hx-swap-oob"))
+            return html;
+        }
+
+        var startTag = html[tagStart..tagEnd];
+        if (ContainsAttribute(startTag, "hx-swap-oob"))
+        {
+            return html;
+        }
+
+        var updated = html.Insert(insertionIndex, $" hx-swap-oob=\"{targetDisposition}{targetSelector}\"");
+        return $"<template>{updated}</template>";
+    }
+
+    private static bool TryFindFirstStartTag(string html, out int tagStart, out int tagEnd, out int insertionIndex)
+    {
+        tagStart = -1;
+        tagEnd = -1;
+        insertionIndex = -1;
+
+        var index = 0;
+        while (index < html.Length)
+        {
+            var open = html.IndexOf('<', index);
+            if (open < 0 || open + 1 >= html.Length)
             {
-                var tagName = match.Groups[1].Value;
-                var tagAttributes = match.Groups[2].Value;
+                return false;
+            }
 
-                // Add the hx-swap-oob attribute to the outermost element's tag
-                var updatedTag = $"<{tagName}{tagAttributes} hx-swap-oob=\"{targetDisposition}{targetSelector}\">";
+            if (html.AsSpan(open).StartsWith("<!--", StringComparison.Ordinal))
+            {
+                var commentEnd = html.IndexOf("-->", open + 4, StringComparison.Ordinal);
+                if (commentEnd < 0)
+                {
+                    return false;
+                }
 
-                // Replace the opening tag with the updated one
-                return $"<template>{regex.Replace(html, updatedTag, 1)}</template>";
-                //return regex.Replace(html, updatedTag, 1);
+                index = commentEnd + 3;
+                continue;
+            }
+
+            var next = html[open + 1];
+            if (!IsHtmlNameStart(next))
+            {
+                index = open + 1;
+                continue;
+            }
+
+            var close = FindStartTagClose(html, open + 1);
+            if (close < 0)
+            {
+                return false;
+            }
+
+            tagStart = open;
+            tagEnd = close + 1;
+            insertionIndex = html[close - 1] == '/' ? close - 1 : close;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static int FindStartTagClose(string html, int start)
+    {
+        var quote = '\0';
+        for (var i = start; i < html.Length; i++)
+        {
+            var ch = html[i];
+            if (quote != '\0')
+            {
+                if (ch == quote)
+                {
+                    quote = '\0';
+                }
+
+                continue;
+            }
+
+            if (ch is '"' or '\'')
+            {
+                quote = ch;
+                continue;
+            }
+
+            if (ch == '>')
+            {
+                return i;
             }
         }
 
-        return html;
+        return -1;
+    }
+
+    private static bool ContainsAttribute(string startTag, string attributeName)
+    {
+        var span = startTag.AsSpan();
+        var index = 1;
+        while (index < span.Length)
+        {
+            while (index < span.Length && !char.IsWhiteSpace(span[index]))
+            {
+                index++;
+            }
+
+            while (index < span.Length && char.IsWhiteSpace(span[index]))
+            {
+                index++;
+            }
+
+            var nameStart = index;
+            while (index < span.Length && (IsHtmlNameCharacter(span[index]) || span[index] == ':'))
+            {
+                index++;
+            }
+
+            if (index > nameStart && span[nameStart..index].Equals(attributeName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            while (index < span.Length && span[index] != '>' && !char.IsWhiteSpace(span[index]))
+            {
+                if (span[index] is '"' or '\'')
+                {
+                    var quote = span[index++];
+                    while (index < span.Length && span[index] != quote)
+                    {
+                        index++;
+                    }
+                }
+
+                index++;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsHtmlNameStart(char ch)
+    {
+        return char.IsAsciiLetter(ch);
+    }
+
+    private static bool IsHtmlNameCharacter(char ch)
+    {
+        return char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_';
     }
 
     private static async Task<string> RenderPartialViewToString(ActionContext context, HtmxViewInfo htmxViewInfo)

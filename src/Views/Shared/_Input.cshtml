@@ -1,9 +1,11 @@
 @using Htmx.Components.Models
+@using Htmx.Components.Table
 @model IInputModel
 
 @{
-    var id = $"{Model.ModelHandler.TypeId}_{Model.Id}";
+    var id = TableComponentIdentity.InputId(Model.ComponentId, Model.ModelHandler.TypeId, Model.Id);
     var routeValues = new { typeId = Model.ModelHandler.TypeId, modelUI = Model.ModelHandler.ModelUI };
+    var hxVals = Html.Raw(TableComponentIdentity.HxVals(Model.ComponentId, ("propertyName", Model.PropName)));
 }
 
     @switch (Model.Kind)
@@ -12,21 +14,21 @@
         {
             <input name="value" id="@(id)" type="number" step="0.01"
             class="input input-bordered w-full" value="@(Model.Value)" 
-            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='{"propertyName": "@Model.PropName"}' />
+            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='@hxVals' />
             break;
         }
         case InputKind.Date:
         {
             <input name="value" id="@(id)" type="date"
             class="input input-bordered w-full" value="@(Model.Value)" 
-            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='{"propertyName": "@Model.PropName"}' />
+            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='@hxVals' />
             break;
         }
         case InputKind.Checkbox:
         {
             <input name="value" id="@(id)" type="checkbox" value="true"
             class="checkbox checkbox-primary" @(Model.ObjectValue != null && (bool)Model.ObjectValue ? "checked" : "") 
-            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="change" hx-vals='{"propertyName": "@Model.PropName"}' />
+            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="change" hx-vals='@hxVals' />
             break;
         }
         case InputKind.Radio:
@@ -38,7 +40,7 @@
                         <span class="label-text">@option.Key</span>
                         <input name="value" id="@(id)" type="radio" value="@option.Value"
                         class="radio radio-primary" @(Model.Value != null && Model.Value.ToString() == option.Value ? "checked" : "")
-                        hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='{"propertyName": "@Model.PropName"}' />
+                        hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='@hxVals' />
                     </label>
                 }
             </div>
@@ -48,7 +50,7 @@
         {
             <select name="value" id="@(id)" 
             class="select select-bordered w-full" 
-            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='{"propertyName": "@Model.PropName"}'>
+            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='@hxVals'>
                 @foreach (var option in Model.Options ?? [])
                 {
                     <option value="@option.Value" @(Model.Value != null && Model.Value.ToString() == option.Value ? "selected" : "")>@option.Key</option>
@@ -60,7 +62,7 @@
         {
             <textarea name="value" id="@(id)" 
             class="textarea textarea-bordered w-full" 
-            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='{"propertyName": "@Model.PropName"}'>@Html.Encode(Model.Value?.ToString())</textarea>
+            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='@hxVals'>@Model.Value</textarea>
             break;
         }
         case InputKind.Text:
@@ -68,7 +70,7 @@
         {
             <input name="value" id="@(id)" type="text"
             class="input input-bordered w-full" value="@(Model.Value)" 
-            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='{"propertyName": "@Model.PropName"}' />
+            hx-post="@Url.Action("SetValue", "Form", routeValues)" hx-trigger="blur" hx-vals='@hxVals' />
             break;
         }
     }

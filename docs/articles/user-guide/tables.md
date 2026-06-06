@@ -4,57 +4,58 @@ Htmx.Components provides powerful table functionality with sorting, filtering, p
 
 ## Basic Table Setup
 
-Tables in Htmx.Components are configured using model handlers with the `[ModelConfig]` attribute. Here's a real example from CruSibyl.Web:
+Tables in Htmx.Components are configured using model handlers with the `[ModelConfig]` attribute. Here's a product-management example:
 
 ### Controller with Model Configuration
 
 ```csharp
-[Route("Admin")]
-[NavActionGroup(DisplayName = "Admin", Icon = "fas fa-cogs", Order = 2)]
-public class AdminController : Controller
+[Route("Catalog")]
+[NavActionGroup(DisplayName = "Catalog", Icon = "fas fa-boxes-stacked", Order = 2)]
+public class CatalogController : Controller
 {
     private readonly AppDbContext _dbContext;
     private readonly IModelHandlerFactoryGeneric _modelHandlerFactory;
 
-    public AdminController(AppDbContext dbContext, IModelHandlerFactoryGeneric modelHandlerFactory)
+    public CatalogController(AppDbContext dbContext, IModelHandlerFactoryGeneric modelHandlerFactory)
     {
         _dbContext = dbContext;
         _modelHandlerFactory = modelHandlerFactory;
     }
 
-    [HttpGet("Repos")]
-    [NavAction(DisplayName = "Repos", Icon = "fas fa-database", Order = 0, PushUrl = true, ViewName = "_Repos")]
-    public async Task<IActionResult> Repos()
+    [HttpGet("Products")]
+    [NavAction(DisplayName = "Products", Icon = "fas fa-box", Order = 0, PushUrl = true, ViewName = "_Products")]
+    public async Task<IActionResult> Products()
     {
-        var modelHandler = await _modelHandlerFactory.Get<Repo, int>(nameof(Repo), ModelUI.Table);
+        var modelHandler = await _modelHandlerFactory.Get<Product, int>(nameof(Product), ModelUI.Table);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync();
+        tableModel.ComponentId = TableComponentIdentity.Ensure("catalog-products");
         return Ok(tableModel);
     }
 
-    [ModelConfig(nameof(Repo))]
-    private void ConfigureRepo(ModelHandlerBuilder<Repo, int> builder)
+    [ModelConfig(nameof(Product))]
+    private void ConfigureProduct(ModelHandlerBuilder<Product, int> builder)
     {
         builder
-            .WithKeySelector(r => r.Id)
-            .WithQueryable(() => _dbContext.Repos)
-            .WithCreate(async repo =>
+            .WithKeySelector(product => product.Id)
+            .WithQueryable(() => _dbContext.Products)
+            .WithCreate(async product =>
             {
-                _dbContext.Repos.Add(repo);
+                _dbContext.Products.Add(product);
                 await _dbContext.SaveChangesAsync();
-                return Result.Value(repo);
+                return Result.Value(product);
             })
-            .WithUpdate(async repo =>
+            .WithUpdate(async product =>
             {
-                _dbContext.Repos.Update(repo);
+                _dbContext.Products.Update(product);
                 await _dbContext.SaveChangesAsync();
-                return Result.Value(repo);
+                return Result.Value(product);
             })
             .WithDelete(async id =>
             {
-                var repo = await _dbContext.Repos.FindAsync(id);
-                if (repo != null)
+                var product = await _dbContext.Products.FindAsync(id);
+                if (product != null)
                 {
-                    _dbContext.Repos.Remove(repo);
+                    _dbContext.Products.Remove(product);
                     await _dbContext.SaveChangesAsync();
                 }
                 return Result.Success();
@@ -62,7 +63,8 @@ public class AdminController : Controller
             .WithTable(table => table
                 .WithCrudActions()
                 .AddSelectorColumn(x => x.Name, config => config.WithEditable())
-                .AddSelectorColumn(x => x.Description!, config => config.WithEditable())
+                .AddSelectorColumn(x => x.Sku, config => config.WithEditable())
+                .AddSelectorColumn(x => x.Price, config => config.WithEditable())
                 .AddCrudDisplayColumn());
     }
 }
@@ -70,33 +72,40 @@ public class AdminController : Controller
 
 ### View File
 
-Create a view file to render the table (e.g., `Views/Admin/_Repos.cshtml`):
+Create a view file to render the table (e.g., `Views/Catalog/_Products.cshtml`):
 
 ```html
 @using Htmx.Components.Table.Models
 @model ITableModel
 
-<div id="admin-repos">
-    <h2>Repository Management</h2>
+<div id="@Model.ComponentId">
+    <h2>Product Management</h2>
     @await Component.InvokeAsync("Table", Model)
 </div>
 ```
 
+The `Table` ViewComponent renders an `htmx-table` root and a nested `htmx-request-scope`. Set a stable `ComponentId` when the same table can be revisited, or when more than one table can appear on the page, so generated DOM ids, out-of-band swap targets, and table/form state partitions stay scoped to the intended table instance.
+
 ## JavaScript Requirements
 
-Tables with inline editing require the `table-behavior` JavaScript behavior:
+Tables with inline editing require the `table-inline-editing` JavaScript behavior:
 
 ```html
-<!-- Include all behaviors (includes table-behavior) -->
+<!-- Include all behaviors (includes table-inline-editing) -->
 <htmx-scripts></htmx-scripts>
 
-<!-- Include only table-behavior -->
-<htmx-scripts include="table-behavior"></htmx-scripts>
+<!-- Include only table-inline-editing -->
+<htmx-scripts include="table-inline-editing"></htmx-scripts>
 ```
 
-The `table-behavior` provides:
+The `table-inline-editing` behavior provides:
 - **Visual editing states**: Highlights rows being edited
 - **Inline editing coordination**: Manages edit mode transitions
+
+Tables also use the default `request-lifecycle` and `error-handling` behaviors:
+- Pending requests disable controls inside the table scope, dim stale table content, and show the table's request indicator
+- HTMX errors render into the table's local `htmx-error-region` before falling back to a global error region
+- Abort, network error, timeout, and response-error events restore pending UI state
 
 ## Table Configuration Options
 
@@ -129,43 +138,43 @@ Enable create, update, and delete operations:
     .AddCrudDisplayColumn())  // Adds action buttons
 ```
 
-## Real-World Example: Admin Users
+## Custom Projection Example
 
-Here's another example from CruSibyl.Web showing a more complex table with custom model:
+Use a projected model when a table should combine data from several entities or expose only a subset of fields:
 
 ```csharp
-[ModelConfig(nameof(AdminUserModel))]
-private void ConfigureAdminUser(ModelHandlerBuilder<AdminUserModel, int> builder)
+[ModelConfig(nameof(TeamMemberRow))]
+private void ConfigureTeamMember(ModelHandlerBuilder<TeamMemberRow, int> builder)
 {
     builder
-        .WithKeySelector(u => u.Id)
-        .WithQueryable(() => _dbContext.Users
-            .Where(u => u.Permissions.Any(p => p.Role.Name == Role.Codes.Admin || p.Role.Name == Role.Codes.System))
-            .Select(u => new AdminUserModel
+        .WithKeySelector(member => member.Id)
+        .WithQueryable(() => _dbContext.TeamMembers
+            .Where(member => member.IsActive)
+            .Select(member => new TeamMemberRow
             {
-                Id = u.Id,
-                Name = u.FirstName + " " + u.LastName,
-                Email = u.Email,
-                Kerberos = u.Kerberos,
-                IsSystemAdmin = u.Permissions.Any(p => p.Role.Name == Role.Codes.System)
+                Id = member.Id,
+                Name = member.FirstName + " " + member.LastName,
+                Email = member.Email,
+                Department = member.Department.Name,
+                CanApproveOrders = member.Roles.Any(role => role.Code == "Approver")
             }))
-        .WithInput(u => u.Email, config => config
+        .WithInput(member => member.Email, config => config
             .WithLabel("Email")
-            .WithPlaceholder("Email to look up")
+            .WithPlaceholder("Email address")
             .WithCssClass("form-control"))
-        .WithInput(u => u.Kerberos, config => config
-            .WithLabel("Kerberos")
-            .WithPlaceholder("Kerberos to look up")
+        .WithInput(member => member.Department, config => config
+            .WithLabel("Department")
+            .WithPlaceholder("Department")
             .WithCssClass("form-control"))
-        .WithInput(u => u.IsSystemAdmin, config => config
-            .WithLabel("System Admin")
+        .WithInput(member => member.CanApproveOrders, config => config
+            .WithLabel("Can Approve Orders")
             .WithCssClass("form-check"))
         .WithTable(table => table
             .WithCrudActions()
             .AddSelectorColumn(x => x.Name)
             .AddSelectorColumn(x => x.Email, config => config.WithEditable())
-            .AddSelectorColumn(x => x.Kerberos, config => config.WithEditable())
-            .AddSelectorColumn(x => x.IsSystemAdmin, config => config.WithEditable())
+            .AddSelectorColumn(x => x.Department, config => config.WithEditable())
+            .AddSelectorColumn(x => x.CanApproveOrders, config => config.WithEditable())
             .AddCrudDisplayColumn());
 }
 ```
@@ -187,6 +196,7 @@ The `Table` ViewComponent automatically renders:
 - **Pagination**: Automatic pagination for large datasets
 - **Inline Editing**: Edit data directly in the table
 - **CRUD Operations**: Create, update, delete records
+- **Scoped Instances**: Multiple tables can render on one page without sharing DOM targets or table state
 
 ### Integration with Entity Framework
 Tables work seamlessly with Entity Framework Core through the `WithQueryable()` method, providing efficient database queries with proper pagination and filtering.
@@ -253,7 +263,11 @@ Pagination is automatically handled by the table provider. Configure page size:
 
 ```csharp
 // In your action
-var tableState = pageState.GetOrCreate<TableState>("Table", "TableState", () => new TableState
+tableModel.ComponentId = TableComponentIdentity.Ensure("catalog-products");
+var tableState = pageState.GetOrCreate<TableState>(
+    TableComponentIdentity.TableStatePartition(tableModel.ComponentId),
+    TableStateKeys.TableState,
+    () => new TableState
 {
     PageSize = 25 // Default page size
 });

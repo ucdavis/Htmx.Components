@@ -8,7 +8,7 @@ We welcome contributions to the Htmx.Components framework! This guide will help 
 
 ### Prerequisites
 
-- .NET 8.0 SDK or later
+- .NET 10.0 SDK or later
 - Visual Studio 2022 or Visual Studio Code
 - Basic understanding of ASP.NET Core, HTMX, and Entity Framework Core
 

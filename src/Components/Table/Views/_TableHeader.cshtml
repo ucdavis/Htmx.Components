@@ -1,7 +1,8 @@
 @using Htmx.Components.Table.Models
+@using Htmx.Components.Table
 @model ITableModel
 
-<tr id="table-header">
+<tr id="@TableComponentIdentity.HeaderId(Model)">
     @foreach (var column in Model.Columns)
     {
         if (column.Sortable)
@@ -11,7 +12,7 @@
             var indicator = isCurrentSort ? (Model.State.SortDirection == "asc" ? "▲" : "▼") : "";
             <th>
                 <a href="#" hx-post="@Url.Action("SetSort", "Form", new { typeId = Model.TypeId })"
-                    hx-vals='{"column": "@column.Header", "direction": "@nextSortDirection"}' hx-swap="none">
+                    hx-vals='@Html.Raw(TableComponentIdentity.HxVals(Model.ComponentId, ("column", column.Header), ("direction", nextSortDirection)))' hx-swap="none">
                     @column.Header @indicator
                 </a>
             </th>

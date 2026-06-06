@@ -287,6 +287,51 @@ public class ActionModelBuilder : BuilderBase<ActionModelBuilder, ActionModel>
     public ActionModelBuilder WithHxInclude(string selector) => WithAttribute("hx-include", selector);
 
     /// <summary>
+    /// Sets the request scope that should own pending UI for this action.
+    /// Supports normal selectors plus "this", "closest &lt;selector&gt;", and "find &lt;selector&gt;".
+    /// </summary>
+    /// <param name="selector">The request scope selector.</param>
+    /// <returns>The current builder instance for method chaining.</returns>
+    public ActionModelBuilder WithRequestScope(string selector) => WithAttribute("data-hc-request-scope-selector", selector);
+
+    /// <summary>
+    /// Sets the indicator elements to show while this action has a pending HTMX request.
+    /// Supports normal selectors plus "this", "closest &lt;selector&gt;", and "find &lt;selector&gt;".
+    /// </summary>
+    /// <param name="selector">The pending indicator selector.</param>
+    /// <returns>The current builder instance for method chaining.</returns>
+    public ActionModelBuilder WithRequestIndicator(string selector) => WithAttribute("data-hc-request-indicator-selector", selector);
+
+    /// <summary>
+    /// Sets which controls are disabled while this action has a pending HTMX request.
+    /// Valid modes are "trigger", "scope", and "none".
+    /// </summary>
+    /// <param name="mode">The pending disable mode.</param>
+    /// <returns>The current builder instance for method chaining.</returns>
+    public ActionModelBuilder WithPendingDisable(string mode)
+    {
+        if (mode is not ("trigger" or "scope" or "none"))
+            throw new ArgumentOutOfRangeException(nameof(mode), mode, "Valid values are: trigger, scope, none.");
+
+        return WithAttribute("data-hc-pending-disable", mode);
+    }
+
+    /// <summary>
+    /// Sets a custom selector for controls disabled when <see cref="WithPendingDisable"/> is configured with "scope".
+    /// </summary>
+    /// <param name="selector">The selector for elements to disable.</param>
+    /// <returns>The current builder instance for method chaining.</returns>
+    public ActionModelBuilder WithPendingDisableSelector(string selector) => WithAttribute("data-hc-pending-disable-selector", selector);
+
+    /// <summary>
+    /// Sets the stale regions to dim while this action has a pending HTMX request.
+    /// Supports normal selectors plus "this", "closest &lt;selector&gt;", and "find &lt;selector&gt;".
+    /// </summary>
+    /// <param name="selector">The stale region selector.</param>
+    /// <returns>The current builder instance for method chaining.</returns>
+    public ActionModelBuilder WithStaleRegion(string selector) => WithAttribute("data-hc-stale-region-selector", selector);
+
+    /// <summary>
     /// Builds the final ActionModel instance with all configured properties.
     /// This method is called internally to create the final result.
     /// </summary>

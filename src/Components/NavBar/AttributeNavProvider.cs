@@ -177,6 +177,7 @@ public class AttributeNavProvider : INavProvider
             else
                 a.WithHxGet(url);
             a.WithHxPushUrl(desc.ActionAttr.PushUrl.ToString().ToLowerInvariant());
+            a.WithHxSwap("none");
         };
     }
 

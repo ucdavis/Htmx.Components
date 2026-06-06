@@ -1,12 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
-    
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**;tests/**;docs/_site/**</DefaultItemExcludes>
+
     <!-- NuGet Package Metadata -->
     <PackageId>Htmx.Components</PackageId>
     <Title>Htmx.Components</Title>
@@ -40,8 +41,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
-    <Content Remove="content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
+    <None Remove="bin/**;obj/**;tests/**;docs/_site/**;content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
+    <Content Remove="bin/**;obj/**;tests/**;docs/_site/**;content/extracted-css-classes.txt;content/css-extractor-patterns.txt;content/extracted-css-classes.generated.css;package.json;package-lock.json;tools/**" />
+    <Compile Remove="tests/**" />
+    <EmbeddedResource Remove="tests/**" />
+    <None Remove="tests/**" />
   </ItemGroup>
 
   <!-- Include package files -->
@@ -62,8 +66,8 @@
     <PackageReference Include="Htmx" Version="1.8.1" />
     <PackageReference Include="Htmx.TagHelpers" Version="1.8.1" />
     <PackageReference Include="Humanizer" Version="2.14.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
     <PackageReference Include="Razor.Templating.Core" Version="2.1.0" />
     <PackageReference Include="Serilog" Version="4.2.0" />
     <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.6" />

@@ -1,6 +1,6 @@
 using Htmx.Components.Extensions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Htmx.Components.Models.Builders;
@@ -35,13 +35,14 @@ public abstract class BuilderBase<TBuilder, TModel>
     /// <summary>
     /// Gets the current action context for the request.
     /// Provides access to request information, routing data, and action metadata.
+    /// The action descriptor is resolved from endpoint routing metadata.
     /// </summary>
     public ActionContext ActionContext
     {
         get
         {
-            var actionContextAccessor = ServiceProvider.GetRequiredService<IActionContextAccessor>();
-            return actionContextAccessor.GetValidActionContext();
+            var httpContextAccessor = ServiceProvider.GetRequiredService<IHttpContextAccessor>();
+            return httpContextAccessor.GetValidActionContext();
         }
     }
 

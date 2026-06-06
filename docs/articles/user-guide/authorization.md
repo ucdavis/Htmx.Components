@@ -42,26 +42,26 @@ builder.Services.AddHtmxComponents(htmxOptions =>
 Navigation items are automatically filtered based on authorization:
 
 ```csharp
-[Route("Admin")]
-[NavActionGroup(DisplayName = "Admin", Icon = "fas fa-cogs", Order = 2)]
-public class AdminController : Controller
+[Route("Users")]
+[NavActionGroup(DisplayName = "Users", Icon = "fas fa-users", Order = 2)]
+public class UsersController : Controller
 {
-    [HttpGet("AdminUsers")]
-    [Authorize(Policy = "SystemAccess")]  // Only System role can access
-    [NavAction(DisplayName = "Admin Users", Icon = "fas fa-users-cog", Order = 1)]
-    public async Task<IActionResult> AdminUsers()
+    [HttpGet("Manage")]
+    [Authorize(Policy = "CanManageUsers")]
+    [NavAction(DisplayName = "Manage Users", Icon = "fas fa-users-cog", Order = 1)]
+    public async Task<IActionResult> Manage()
     {
-        var modelHandler = await _modelHandlerFactory.Get<AdminUserModel, int>(nameof(AdminUserModel), ModelUI.Table);
+        var modelHandler = await _modelHandlerFactory.Get<UserSummary, int>(nameof(UserSummary), ModelUI.Table);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync();
         return Ok(tableModel);
     }
 
-    [HttpGet("Repos")]
-    [NavAction(DisplayName = "Repos", Icon = "fas fa-database", Order = 0)]
-    public async Task<IActionResult> Repos()
+    [HttpGet("Products")]
+    [NavAction(DisplayName = "Products", Icon = "fas fa-box", Order = 0)]
+    public async Task<IActionResult> Products()
     {
         // No authorization - visible to all authenticated users
-        var modelHandler = await _modelHandlerFactory.Get<Repo, int>(nameof(Repo), ModelUI.Table);
+        var modelHandler = await _modelHandlerFactory.Get<Product, int>(nameof(Product), ModelUI.Table);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync();
         return Ok(tableModel);
     }
@@ -157,12 +157,12 @@ public class ResourceOperationRegistry : IResourceOperationRegistry
 Tables automatically respect authorization rules when CRUD operations are enabled:
 
 ```csharp
-[ModelConfig(nameof(AdminUserModel))]
-private void ConfigureAdminUser(ModelHandlerBuilder<AdminUserModel, int> builder)
+[ModelConfig(nameof(UserSummary))]
+private void ConfigureUserSummary(ModelHandlerBuilder<UserSummary, int> builder)
 {
     builder
         .WithKeySelector(u => u.Id)
-        .WithQueryable(() => _dbContext.Users.Where(/* authorized users only */))
+        .WithQueryable(() => _dbContext.Users.Where(/* authorized rows only */))
         .WithTable(table => table
             .WithCrudActions()  // CRUD actions respect controller authorization
             .AddSelectorColumn(x => x.Name)
@@ -585,7 +585,7 @@ public class TenantResourceHandler : AuthorizationHandler<TenantResourceRequirem
 
 ```csharp
 [Test]
-public async Task UserManagementHandler_AdminUser_ShouldSucceed()
+public async Task UserManagementHandler_AuthorizedUser_ShouldSucceed()
 {
     // Arrange
     var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
@@ -623,4 +623,4 @@ public async Task GetUsers_UnauthorizedUser_ShouldReturnForbidden()
 }
 ```
 
-This comprehensive authorization system provides fine-grained control over access to resources while maintaining flexibility and performance. The system integrates seamlessly with ASP.NET Core's built-in authorization framework while adding powerful resource-operation based permissions specifically designed for HTMX applications.
+This comprehensive authorization system provides fine-grained control over access to resources while maintaining flexibility and performance. The system integrates seamlessly with ASP.NET Core's built-in authorization framework while adding powerful resource-operation-based permissions specifically designed for HTMX applications.

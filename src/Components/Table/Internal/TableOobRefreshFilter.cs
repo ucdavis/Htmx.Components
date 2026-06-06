@@ -51,6 +51,7 @@ public class TableOobRefreshFilter : OobResultFilterBase<TableRefreshActionAttri
             throw new InvalidOperationException($"MultiSwapViewResult must have a model set when filtering via {nameof(TableRefreshActionAttribute)}.");
         }
         var tableModel = (ITableModel)multiSwapViewResult.Model;
+        tableModel.ComponentId = TableComponentIdentity.Ensure(tableModel.ComponentId);
         multiSwapViewResult
             .WithOobContent(_viewPaths.Table.TableActionList, tableModel)
             .WithOobContent(_viewPaths.Table.EditClassToggle, tableModel)

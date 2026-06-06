@@ -4,7 +4,6 @@ using Htmx.Components.Table;
 using Htmx.Components.Table.Models;
 using Htmx.Components.Models.Builders;
 using Htmx.Components.State;
-using static Htmx.Components.State.PageStateConstants;
 
 namespace Htmx.Components.Models;
 
@@ -69,12 +68,11 @@ public class ModelHandler<T, TKey> : ModelHandler
     private Expression<Func<T, TKey>> _keySelectorExpression = null!;
     private Func<T, TKey> _keySelectorFunc = null!;
     private ITableProvider _tableProvider;
-    private IPageState _pageState;
 
     internal ModelHandler(ModelHandlerOptions<T, TKey> options, ITableProvider tableProvider, IPageState pageState)
     {
         _tableProvider = tableProvider;
-        _pageState = pageState;
+        ArgumentNullException.ThrowIfNull(pageState);
         if (options.TypeId == null) throw new ArgumentNullException(nameof(options.TypeId));
         if (options.ServiceProvider == null) throw new ArgumentNullException(nameof(options.ServiceProvider));
 
@@ -172,7 +170,6 @@ public class ModelHandler<T, TKey> : ModelHandler
         if (tableState == null)
         {
             tableState = new TableState();
-            _pageState.Set(TableStateKeys.Partition, TableStateKeys.TableState, tableState);
         }
 
         var tableModelBuilder = new TableModelBuilder<T, TKey>(_keySelectorExpression, this, ServiceProvider);

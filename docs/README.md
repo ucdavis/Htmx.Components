@@ -34,7 +34,7 @@ The `.github/workflows/docs.yml` workflow:
 
 ### Prerequisites
 
-- .NET 8.0 SDK
+- .NET 10.0 SDK
 - DocFX (installed via `dotnet tool install -g docfx`)
 
 ### Generate Documentation Locally

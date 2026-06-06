@@ -4,7 +4,7 @@ This guide will help you set up HTMX Components in your ASP.NET Core application
 
 ## Prerequisites
 
-- .NET 8.0 or later
+- .NET 10.0 or later
 - ASP.NET Core application
 - Basic familiarity with HTMX concepts
 
@@ -118,7 +118,7 @@ Include HTMX in your layout file (`_Layout.cshtml`):
 <head>
     <title>My App</title>
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@2/dist/htmx.min.js"></script>
     <!-- Recommended: Include Tailwind CSS with daisyUI for default styling -->
 </head>
 <body>
@@ -132,7 +132,7 @@ Include HTMX in your layout file (`_Layout.cshtml`):
     <!-- Authentication Status -->
     @await Component.InvokeAsync("AuthStatus")
     
-    <!-- JavaScript Behaviors -->
+    <!-- Packaged JavaScript runtime behaviors -->
     <htmx-scripts></htmx-scripts>
     
     <!-- Page State Management -->
@@ -222,4 +222,3 @@ Create the corresponding view (`Views/Users/Index.cshtml`):
 - [Configure table features](user-guide/tables.md)
 - [Implement authentication](user-guide/authentication.md)
 - [Set up authorization](user-guide/authorization.md)
-

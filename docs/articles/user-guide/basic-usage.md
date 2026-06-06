@@ -13,26 +13,34 @@ For setup instructions, see the **[Getting Started Guide](../getting-started.md)
 
 ### JavaScript Behaviors
 
-The `<htmx-scripts>` TagHelper provides a unified way to include JavaScript behaviors:
+The `<htmx-scripts>` TagHelper provides a unified way to include the packaged Htmx.Components browser runtime:
 
 ```html
 <!-- Include all behaviors (default) -->
 <htmx-scripts></htmx-scripts>
 
 <!-- Include only specific behaviors -->
-<htmx-scripts include="page-state,table-behavior"></htmx-scripts>
+<htmx-scripts include="page-state-headers,table-inline-editing"></htmx-scripts>
 
 <!-- Exclude specific behaviors -->
-<htmx-scripts exclude="auth-retry"></htmx-scripts>
+<htmx-scripts exclude="authentication-retry"></htmx-scripts>
 ```
 
 **Available Behaviors:**
-- `page-state`: Automatic page state management for HTMX requests
-- `table-behavior`: Enhanced table interactions and editing
+- `page-state-headers`: Automatic page state management for HTMX requests
+- `table-inline-editing`: Enhanced table interactions and editing
 - `blur-save-coordination`: Prevents form submission race conditions
-- `auth-retry`: Handles authentication retry with popup windows
+- `request-lifecycle`: Default pending UI behavior for HTMX requests
+- `error-handling`: Scoped/global error display for HTMX failures
+- `authentication-retry`: Handles authentication retry with popup windows
 
-The behaviors are delivered as server-generated inline JavaScript, allowing for dynamic configuration and eliminating additional HTTP requests.
+The behaviors are delivered by the packaged `htmx-components.js` static web asset with a small JSON configuration block emitted by the TagHelper.
+
+The default runtime also registers the first-party custom elements used by components:
+
+- `htmx-table`: scopes table identity, edit state, and table lifecycle events
+- `htmx-request-scope`: applies pending UI to the relevant region during HTMX requests
+- `htmx-error-region`: receives safe, user-facing HTMX error messages
 
 ## 3. Set Up Tailwind CSS (Recommended)
 

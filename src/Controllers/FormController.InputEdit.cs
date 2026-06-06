@@ -6,6 +6,7 @@ using Htmx.Components.Utilities;
 using Htmx.Components.ViewResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using static Htmx.Components.Authorization.AuthConstants;
 using static Htmx.Components.State.PageStateConstants;
 using Htmx.Components.Table.Internal;
@@ -21,42 +22,49 @@ public partial class FormController
     /// <param name="typeId">The identifier of the model type being edited</param>
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
     /// <param name="key">The unique key identifying the record to edit</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result containing the edit form UI</returns>
     [HttpPost("{typeId}/{modelUI}/Edit")]
     [TableEditAction]
-    public async Task<IActionResult> Edit(string typeId, ModelUI modelUI, string key)
+    public async Task<IActionResult> Edit(string typeId, ModelUI modelUI, string key, string? componentId)
     {
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
             nameof(EditImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            key, modelHandler);
+            key, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> EditImpl<T, TKey>(string stringKey, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> EditImpl<T, TKey>(string stringKey, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Read))
-            return Forbid();
+            return AuthorizationError(componentId);
         if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Update))
-            return Forbid();
+            return AuthorizationError(componentId);
 
         var key = (TKey)JsonSerializer.Deserialize(stringKey, modelHandler.KeyType)!;
         var editingItem = await modelHandler.GetQueryable!()
             .Where(modelHandler.GetKeyPredicate(key))
             .SingleOrDefaultAsync();
         if (editingItem == null)
-            return BadRequest($"Model with key '{stringKey}' not found.");
+            return CrudError("The selected item could not be found.", componentId);
         var pageState = this.GetPageState();
-        pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingItem, editingItem);
-        pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord, true);
+        var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        pageState.Set(formStatePartition, FormStateKeys.EditingItem, editingItem);
+        pageState.Set(formStatePartition, FormStateKeys.EditingExistingRecord, true);
 
         var tableModel = await modelHandler.BuildTableModelAsync();
+        tableModel.ComponentId = componentId;
         tableModel.Rows.Add(new TableRowContext<T, TKey>
         {
             Item = editingItem,
@@ -77,43 +85,51 @@ public partial class FormController
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
     /// <param name="propertyName">The name of the property to update</param>
     /// <param name="value">The new string value to set for the property</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result indicating success or failure of the value update</returns>
     [HttpPost("{typeId}/{modelUI}/SetValue")]
-    public async Task<IActionResult> SetValue(string typeId, ModelUI modelUI, string propertyName, string? value)
+    public async Task<IActionResult> SetValue(string typeId, ModelUI modelUI, string propertyName, string? value, string? componentId)
     {
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
             nameof(SetValueImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            propertyName, value ?? string.Empty, modelHandler);
+            propertyName, value, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private async Task<IActionResult> SetValueImpl<T, TKey>(string propertyName, string? value, ModelHandler<T, TKey> modelHandler)
+    private async Task<IActionResult> SetValueImpl<T, TKey>(string propertyName, string? value, string componentId, ModelHandler<T, TKey> modelHandler)
         where T : class
     {
         var pageState = this.GetPageState();
-        var editingExistingRecord = pageState.Get<bool>(FormStateKeys.Partition, FormStateKeys.EditingExistingRecord)!;
+        var formStatePartition = TableComponentIdentity.FormStatePartition(componentId);
+        var editingItem = pageState.Get<T>(formStatePartition, FormStateKeys.EditingItem);
+        if (editingItem is null)
+            return CrudError("Editing session expired. Refresh and try again.", componentId);
+
+        var editingExistingRecord = pageState.Get<bool>(formStatePartition, FormStateKeys.EditingExistingRecord)!;
         if (editingExistingRecord)
         {
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Update))
-                return Forbid();
+                return AuthorizationError(componentId);
         }
         else
         {
             if (!await IsAuthorized(modelHandler.TypeId, CrudOperations.Create))
-                return Forbid();
+                return AuthorizationError(componentId);
         }
 
-        var tableState = pageState.GetOrCreate<TableState>(TableStateKeys.Partition, TableStateKeys.TableState, () => new());
-        var editingItem = pageState.Get<T>(FormStateKeys.Partition, FormStateKeys.EditingItem)!;
         var property = typeof(T).GetProperty(propertyName);
         if (property == null)
-            return BadRequest($"Property '{propertyName}' not found.");
+            return ValidationError("The submitted field could not be found.", componentId);
 
         try
         {
@@ -122,10 +138,11 @@ public partial class FormController
         }
         catch (Exception ex)
         {
-            return BadRequest($"Failed to set property '{propertyName}': {ex.Message}");
+            _logger.LogWarning(ex, "Failed to set property {PropertyName} for model type {TypeId}.", propertyName, modelHandler.TypeId);
+            return ValidationError("The submitted value is not valid for this field.", componentId);
         }
 
-        pageState.Set(FormStateKeys.Partition, FormStateKeys.EditingItem, editingItem);
+        pageState.Set(formStatePartition, FormStateKeys.EditingItem, editingItem);
         // We return a MultiSwapViewResult to allow the PageState to piggyback on the response
         return new MultiSwapViewResult();
     }
@@ -166,26 +183,34 @@ public partial class FormController
     /// <param name="modelUI">The UI context (typically Table) for the operation</param>
     /// <param name="propertyName">The name of the property that changed</param>
     /// <param name="value">The new string value of the property</param>
+    /// <param name="componentId">The table component instance id that owns the request.</param>
     /// <returns>An action result that may include UI updates based on the value change</returns>
     [HttpPost("{typeId}/{modelUI}/ValueChanged")]
-    public async Task<IActionResult> ValueChanged(string typeId, ModelUI modelUI, string propertyName, string value)
+    public async Task<IActionResult> ValueChanged(string typeId, ModelUI modelUI, string propertyName, string value, string? componentId)
     {
-        var modelHandler = await _modelRegistry.GetModelHandler(typeId, modelUI);
-        if (modelHandler == null)
-            return BadRequest($"Model handler for type '{typeId}' not found.");
+        if (ValidateTableComponentId(componentId, out var scopedComponentId) is { } invalidComponent)
+            return invalidComponent;
+
+        var (resolvedModelHandler, error) = await ResolveModelHandler(typeId, modelUI, scopedComponentId);
+        if (error is not null)
+            return error;
+        var modelHandler = resolvedModelHandler ?? throw new InvalidOperationException("Resolved model handler was null without an error result.");
 
         var result = await GenericMethodInvoker.InvokeAsync<IActionResult>(
             this,
             nameof(ValueChangedImpl),
             [modelHandler.ModelType, modelHandler.KeyType],
-            propertyName, value, modelHandler);
+            propertyName, value, scopedComponentId, modelHandler);
         return result!;
     }
 
-    private Task<IActionResult> ValueChangedImpl<T, TKey>(string propertyName, string value,
+    private Task<IActionResult> ValueChangedImpl<T, TKey>(string propertyName, string value, string componentId,
         ModelHandler<T, TKey> modelHandler)
         where T : class
     {
-        throw new NotImplementedException("This method is not implemented yet.");
+        if (string.IsNullOrWhiteSpace(propertyName) || string.IsNullOrWhiteSpace(componentId))
+            return Task.FromResult<IActionResult>(BadRequest("Invalid value change request."));
+
+        return Task.FromResult<IActionResult>(NoContent());
     }
 }

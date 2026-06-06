@@ -1,5 +1,4 @@
-using System.Text.Encodings.Web;
-using Microsoft.AspNetCore.Hosting;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Razor.TagHelpers;
@@ -7,29 +6,28 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 namespace Htmx.Components.TagHelpers;
 
 /// <summary>
-/// Tag helper that includes all Htmx.Components JavaScript behaviors as inline scripts.
-/// This replaces the need to include individual JavaScript files and allows for dynamic content generation.
+/// Tag helper that includes the Htmx.Components client runtime.
 /// </summary>
 [HtmlTargetElement("htmx-scripts")]
 public class HtmxScriptsTagHelper : TagHelper
 {
-    private readonly IHtmlHelper _htmlHelper;
-    private readonly IWebHostEnvironment _environment;
+    private const string RuntimePath = "/_content/Htmx.Components/js/htmx-components.js";
+    private readonly IFileVersionProvider _fileVersionProvider;
 
     /// <summary>
     /// Gets or sets which scripts to include. If null or empty, includes all scripts.
-    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "authentication-retry"
+    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "request-lifecycle", "error-handling", "authentication-retry"
     /// </summary>
     public string? Include { get; set; }
 
     /// <summary>
     /// Gets or sets which scripts to exclude from the default set.
-    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "authentication-retry"
+    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "request-lifecycle", "error-handling", "authentication-retry"
     /// </summary>
     public string? Exclude { get; set; }
 
     /// <summary>
-    /// ViewContext is required to contextualize the IHtmlHelper
+    /// Gets or sets the current view context used to resolve versioned static asset URLs.
     /// </summary>
     [ViewContext]
     [HtmlAttributeNotBound]
@@ -38,65 +36,28 @@ public class HtmxScriptsTagHelper : TagHelper
     /// <summary>
     /// Initializes a new instance of the HtmxScriptsTagHelper with the required dependencies.
     /// </summary>
-    /// <param name="htmlHelper">The HTML helper for rendering HTML content</param>
-    /// <param name="environment">The web hosting environment for accessing application information</param>
-    public HtmxScriptsTagHelper(IHtmlHelper htmlHelper, IWebHostEnvironment environment)
+    /// <param name="fileVersionProvider">The static asset file version provider.</param>
+    public HtmxScriptsTagHelper(IFileVersionProvider fileVersionProvider)
     {
-        _htmlHelper = htmlHelper;
-        _environment = environment;
+        _fileVersionProvider = fileVersionProvider;
     }
 
     /// <summary>
     /// Processes the tag helper and renders the requested JavaScript behaviors.
     /// </summary>
-    public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
+    public override Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
-        // Contextualize the HTML helper
-        ((IViewContextAware)_htmlHelper).Contextualize(ViewContext);
+        output.TagName = null;
+        var config = JsonSerializer.Serialize(new HtmxComponentsRuntimeConfig(GetScriptsToInclude().ToArray()));
+        var runtimeUrl = _fileVersionProvider.AddFileVersionToPath(
+            ViewContext.HttpContext.Request.PathBase,
+            RuntimePath);
 
-        // Change the tag to a script tag
-        output.TagName = "script";
-        output.Attributes.SetAttribute("type", "text/javascript");
-
-        var scriptsToInclude = GetScriptsToInclude();
-        var scriptContent = new List<string>();
-
-        foreach (var script in scriptsToInclude)
-        {
-            try
-            {
-                var content = await _htmlHelper.PartialAsync($"Scripts/_{script}");
-                if (content != null)
-                {
-                    // Use StringWriter to properly extract the content from IHtmlContent
-                    using var writer = new StringWriter();
-                    content.WriteTo(writer, HtmlEncoder.Default);
-                    var scriptText = writer.ToString();
-                    if (!string.IsNullOrWhiteSpace(scriptText))
-                    {
-                        scriptContent.Add(scriptText);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Capture any exception for debugging
-                scriptContent.Add($"// Error loading {script}: {ex.Message}");
-                continue;
-            }
-        }
-
-        if (scriptContent.Any())
-        {
-            var combinedScript = string.Join("\n\n", scriptContent);
-            output.Content.SetHtmlContent($"\n{combinedScript}\n");
-        }
-        else
-        {
-            // For debugging: output which scripts were attempted
-            var attempted = string.Join(", ", scriptsToInclude);
-            output.Content.SetHtmlContent($"\n// No scripts found. Attempted: {attempted}\n");
-        }
+        output.Content.SetHtmlContent($"""
+            <script type="application/json" id="htmx-components-config">{config}</script>
+            <script src="{runtimeUrl}" defer></script>
+            """);
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -106,11 +67,15 @@ public class HtmxScriptsTagHelper : TagHelper
     {
         var allScripts = new[]
         {
-            "PageStateHeaders",
-            "TableInlineEditing", 
-            "BlurSaveCoordination",
-            "AuthenticationRetry"
+            "page-state-headers",
+            "table-inline-editing",
+            "blur-save-coordination",
+            "request-lifecycle",
+            "error-handling",
+            "authentication-retry"
         };
+
+        IEnumerable<string> scripts = allScripts;
 
         // If Include is specified, only include those
         if (!string.IsNullOrWhiteSpace(Include))
@@ -121,11 +86,8 @@ public class HtmxScriptsTagHelper : TagHelper
                 .Where(s => s != null)
                 .ToHashSet();
 
-            return allScripts.Where(s => includeList.Contains(s));
+            scripts = scripts.Where(s => includeList.Contains(s));
         }
-
-        // Start with all scripts
-        var scripts = allScripts.AsEnumerable();
 
         // Remove excluded scripts
         if (!string.IsNullOrWhiteSpace(Exclude))
@@ -149,11 +111,15 @@ public class HtmxScriptsTagHelper : TagHelper
     {
         return userFriendlyName.ToLowerInvariant() switch
         {
-            "page-state-headers" => "PageStateHeaders",
-            "table-inline-editing" => "TableInlineEditing",
-            "blur-save-coordination" => "BlurSaveCoordination", 
-            "authentication-retry" => "AuthenticationRetry",
+            "page-state-headers" => "page-state-headers",
+            "table-inline-editing" => "table-inline-editing",
+            "blur-save-coordination" => "blur-save-coordination",
+            "request-lifecycle" => "request-lifecycle",
+            "error-handling" => "error-handling",
+            "authentication-retry" => "authentication-retry",
             _ => null
         };
     }
+
+    private sealed record HtmxComponentsRuntimeConfig(string[] Scripts);
 }
