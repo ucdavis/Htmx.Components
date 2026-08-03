@@ -16,13 +16,13 @@ public class HtmxScriptsTagHelper : TagHelper
 
     /// <summary>
     /// Gets or sets which scripts to include. If null or empty, includes all scripts.
-    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "request-lifecycle", "error-handling", "authentication-retry"
+    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "request-lifecycle", "error-handling", "authentication-retry", "modal"
     /// </summary>
     public string? Include { get; set; }
 
     /// <summary>
     /// Gets or sets which scripts to exclude from the default set.
-    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "request-lifecycle", "error-handling", "authentication-retry"
+    /// Valid values: "page-state-headers", "table-inline-editing", "blur-save-coordination", "request-lifecycle", "error-handling", "authentication-retry", "modal"
     /// </summary>
     public string? Exclude { get; set; }
 
@@ -72,7 +72,8 @@ public class HtmxScriptsTagHelper : TagHelper
             "blur-save-coordination",
             "request-lifecycle",
             "error-handling",
-            "authentication-retry"
+            "authentication-retry",
+            "modal"
         };
 
         IEnumerable<string> scripts = allScripts;
@@ -117,6 +118,7 @@ public class HtmxScriptsTagHelper : TagHelper
             "request-lifecycle" => "request-lifecycle",
             "error-handling" => "error-handling",
             "authentication-retry" => "authentication-retry",
+            "modal" => "modal",
             _ => null
         };
     }
