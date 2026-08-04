@@ -12,6 +12,7 @@
 {
     var attributes = TableComponentIdentity.WithScopedHxVals(action, Model.Table.ComponentId);
     <button
+        type="button"
         class="btn btn-sm @action.CssClass"
         @foreach (var attr in attributes)
         {

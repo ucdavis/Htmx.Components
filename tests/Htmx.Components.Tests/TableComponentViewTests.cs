@@ -28,6 +28,27 @@ public class TableComponentViewTests
         Assert.Contains("bottom: 0;", css, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EditableInputsUseNoSwapFieldUpdates()
+    {
+        var view = ReadRepoFile("src/Views/Shared/_Input.cshtml");
+
+        Assert.DoesNotContain("hx-post=\"@Url.Action(\"SetValue\", \"Form\", routeValues)\" hx-trigger=\"blur\" hx-vals", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("hx-post=\"@Url.Action(\"SetValue\", \"Form\", routeValues)\" hx-trigger=\"change\" hx-vals", view, StringComparison.Ordinal);
+        Assert.Contains("hx-trigger=\"blur\" hx-swap=\"none\"", view, StringComparison.Ordinal);
+        Assert.Contains("hx-trigger=\"change\" hx-swap=\"none\"", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TableActionButtonsDoNotSubmitSurroundingForms()
+    {
+        var cellActions = ReadRepoFile("src/Components/Table/Views/_TableCellActionList.cshtml");
+        var tableActions = ReadRepoFile("src/Components/Table/Views/_TableActionList.cshtml");
+
+        Assert.Contains("type=\"button\"", cellActions, StringComparison.Ordinal);
+        Assert.Contains("type=\"button\"", tableActions, StringComparison.Ordinal);
+    }
+
     private static string ReadRepoFile(string path)
         => File.ReadAllText(Path.Combine(FindRepoRoot(), path));
 
