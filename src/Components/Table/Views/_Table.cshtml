@@ -16,7 +16,7 @@
         @await Html.PartialAsync(ViewPaths.Table.EditClassToggle, Model)
         @await Html.PartialAsync(ViewPaths.Table.TableActionList, Model)
         <table class="table w-full" data-hc-stale-region>
-            <thead class="sticky top-[4rem] bg-base-100 z-10">
+            <thead class="sticky top-[4rem] bg-base-100 z-10" data-hc-table-sticky-header>
                 @await Html.PartialAsync(ViewPaths.Table.Header, Model)
                 <tr id="@TableComponentIdentity.FilterRowId(Model)" data-hc-table-filter-row>
                     @foreach (var column in Model.Columns)
@@ -40,7 +40,7 @@
             @await Html.PartialAsync(ViewPaths.Table.Body, Model)
         </table>
         <htmx-error-region data-hc-error-region class="alert alert-error my-2" hidden></htmx-error-region>
-        <div class="sticky bottom-[4rem] bg-base-100 z-10">
+        <div class="sticky bottom-[4rem] bg-base-100 z-10" data-hc-table-sticky-footer>
             @await Html.PartialAsync(ViewPaths.Table.Pagination, Model)
         </div>
     </htmx-request-scope>

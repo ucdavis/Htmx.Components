@@ -795,7 +795,7 @@
     });
 
     document.addEventListener("htmx:afterSwap", function (event) {
-      const trigger = event.detail?.elt;
+      const trigger = resolveHtmxRequestTrigger(event.detail);
       const target = event.detail?.target;
 
       if (!(trigger instanceof Element) || !(target instanceof Element)) {
@@ -814,6 +814,15 @@
 
       openModal(modal, trigger);
     });
+  }
+
+  function resolveHtmxRequestTrigger(detail) {
+    const requestElement = detail?.requestConfig?.elt;
+    if (requestElement instanceof Element) {
+      return requestElement;
+    }
+
+    return detail?.elt instanceof Element ? detail.elt : null;
   }
 
   function requestTargetedModalBody(trigger, modal, target) {

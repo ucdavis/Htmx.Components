@@ -52,6 +52,8 @@ public class ModalComponentTests
         Assert.Contains("class=\"modal\"", view, StringComparison.Ordinal);
         Assert.Contains("aria-labelledby=\"@Model.TitleId\"", view, StringComparison.Ordinal);
         Assert.Contains("data-hc-modal", view, StringComparison.Ordinal);
+        Assert.Contains("data-hc-modal-box", view, StringComparison.Ordinal);
+        Assert.Contains("data-hc-modal-header", view, StringComparison.Ordinal);
         Assert.Contains("data-hc-modal-body-target=\"#@Model.EffectiveBodyTargetId\"", view, StringComparison.Ordinal);
         Assert.Contains("id=\"@Model.EffectiveBodyTargetId\" data-hc-modal-body", view, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@Model.CloseLabel\"", view, StringComparison.Ordinal);
@@ -67,6 +69,8 @@ public class ModalComponentTests
 
         Assert.Contains("\"modal\"", script, StringComparison.Ordinal);
         Assert.Contains("function installModalBehavior()", script, StringComparison.Ordinal);
+        Assert.Contains("function resolveHtmxRequestTrigger(detail)", script, StringComparison.Ordinal);
+        Assert.Contains("detail?.requestConfig?.elt", script, StringComparison.Ordinal);
         Assert.Contains("data-hc-open-modal", script, StringComparison.Ordinal);
         Assert.Contains("htmx:afterSwap", script, StringComparison.Ordinal);
         Assert.Contains("requestTargetedModalBody(trigger, modal, target)", script, StringComparison.Ordinal);
