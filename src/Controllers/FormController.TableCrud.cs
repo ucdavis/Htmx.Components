@@ -4,7 +4,6 @@ using Htmx.Components.Table.Models;
 using Htmx.Components.Table;
 using Htmx.Components.Utilities;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using static Htmx.Components.Authorization.AuthConstants;
 using static Htmx.Components.State.PageStateConstants;
 using Htmx.Components.Table.Internal;
@@ -159,9 +158,8 @@ public partial class FormController
 
             var editingKey = modelHandler.KeySelectorFunc(editingItem);
 
-            var originalItem = await modelHandler.GetQueryable!()
-                .Where(modelHandler.GetKeyPredicate(editingKey))
-                .SingleAsync();
+            var query = await modelHandler.GetReadQueryAsync();
+            var originalItem = await modelHandler.SingleAsync(query.Where(modelHandler.GetKeyPredicate(editingKey)));
 
             tableModel.Rows.Add(new TableRowContext<T, TKey>
             {

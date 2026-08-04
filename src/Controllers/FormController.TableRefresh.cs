@@ -212,7 +212,7 @@ public partial class FormController
         }
 
         pageState.Set(TableComponentIdentity.TableStatePartition(componentId), TableStateKeys.TableState, tableState);
-        await _tableProvider.FetchPageAsync(tableModel, modelHandler.GetQueryable!(), tableState);
+        await _tableProvider.FetchPageAsync(tableModel, await modelHandler.GetReadQueryAsync(), tableState);
         return Ok(tableModel);
     }
 }

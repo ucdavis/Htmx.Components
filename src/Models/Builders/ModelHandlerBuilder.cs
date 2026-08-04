@@ -23,6 +23,7 @@ public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, T
     private readonly ModelHandlerOptions<T, TKey> _options = new();
     private readonly ITableProvider _tableProvider;
     private readonly IPageState _pageState;
+    private bool _readOperationRegistered;
 
     internal ModelHandlerBuilder(IServiceProvider serviceProvider, string typeId, IResourceOperationRegistry resourceOperationRegistry)
         : base(serviceProvider)
@@ -68,10 +69,50 @@ public class ModelHandlerBuilder<T, TKey> : BuilderBase<ModelHandlerBuilder<T, T
     /// <returns>The current builder instance for method chaining</returns>
     public ModelHandlerBuilder<T, TKey> WithQueryable(Func<IQueryable<T>> getQueryable)
     {
-        _options.Crud.CrudFeatures |= CrudFeatures.Read;
-        _options.Crud.GetQueryable = getQueryable;
-        AddBuildTask(_resourceOperationRegistry.Register(_options.TypeId!, CrudOperations.Read));
+        ArgumentNullException.ThrowIfNull(getQueryable);
+        SetReadSource(() => Task.FromResult(getQueryable()));
         return this;
+    }
+
+    /// <summary>
+    /// Configures an enumerable data source for read operations.
+    /// This delegate is evaluated for each read request, allowing tables backed by in-memory rows.
+    /// Also registers the read operation with the authorization system.
+    /// </summary>
+    /// <param name="getRows">A function that returns the row source for the model</param>
+    /// <returns>The current builder instance for method chaining</returns>
+    public ModelHandlerBuilder<T, TKey> WithRows(Func<IEnumerable<T>> getRows)
+    {
+        ArgumentNullException.ThrowIfNull(getRows);
+        SetReadSource(() => Task.FromResult(getRows().AsQueryable()));
+        return this;
+    }
+
+    /// <summary>
+    /// Configures an asynchronous in-memory data source for read operations.
+    /// This delegate is evaluated for each read request, allowing tables backed by asynchronously loaded rows.
+    /// Also registers the read operation with the authorization system.
+    /// </summary>
+    /// <param name="getRowsAsync">A function that returns the row source for the model</param>
+    /// <returns>The current builder instance for method chaining</returns>
+    public ModelHandlerBuilder<T, TKey> WithRowsAsync(Func<Task<IReadOnlyList<T>>> getRowsAsync)
+    {
+        ArgumentNullException.ThrowIfNull(getRowsAsync);
+        SetReadSource(async () => (await getRowsAsync()).AsQueryable());
+        return this;
+    }
+
+    private void SetReadSource(Func<Task<IQueryable<T>>> getQuery)
+    {
+        _options.Crud.CrudFeatures |= CrudFeatures.Read;
+        _options.Crud.GetQuery = getQuery;
+        if (_readOperationRegistered)
+        {
+            return;
+        }
+
+        AddBuildTask(_resourceOperationRegistry.Register(_options.TypeId!, CrudOperations.Read));
+        _readOperationRegistered = true;
     }
 
     /// <summary>
