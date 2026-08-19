@@ -23,6 +23,7 @@ public class HtmxScriptsTagHelperTests
         Assert.Contains("request-lifecycle", html);
         Assert.Contains("error-handling", html);
         Assert.Contains("authentication-retry", html);
+        Assert.Contains("modal", html);
     }
 
     [Fact]
@@ -40,6 +41,7 @@ public class HtmxScriptsTagHelperTests
         Assert.DoesNotContain("blur-save-coordination", html);
         Assert.DoesNotContain("error-handling", html);
         Assert.DoesNotContain("authentication-retry", html);
+        Assert.DoesNotContain("modal", html);
     }
 
     private static async Task<TagHelperOutput> RenderAsync(HtmxScriptsTagHelper tagHelper)

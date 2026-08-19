@@ -5,33 +5,33 @@ using Htmx.Components.Extensions;
 using Htmx.Components.Models;
 using Htmx.Components.ViewResults;
 using Htmx.Components.State;
+using Htmx.Components.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Htmx.Components.Table.Models;
 
 namespace Htmx.Components.Table;
 
 /// <summary>
-/// Provides functionality for fetching and processing table data with Entity Framework Core support.
+/// Provides functionality for fetching and processing table data.
 /// </summary>
 /// <remarks>
 /// The table provider handles pagination, filtering, sorting, and data retrieval for table models.
-/// It works specifically with Entity Framework Core queryables and provides async operations
-/// for optimal performance.
+/// It uses asynchronous query execution when the source provider supports it and falls back to
+/// synchronous LINQ execution for in-memory sources.
 /// </remarks>
 public interface ITableProvider
 {
     /// <summary>
     /// Uses the given columns and tableState to extend the given queryable for appropriate
-    /// filtering and sorting, and then executes the query twice; once with .CountAsync() so that
+    /// filtering and sorting, and then executes the query twice; once to count rows so that
     /// PageCount can be calculated, and once with pagination applied. Places the results in the
-    /// given <see cref="TableModel{T, TKey}"/>. The queryable is expected to be an EF Core queryable.
+    /// given <see cref="TableModel{T, TKey}"/>.
     /// </summary>
     /// <typeparam name="T">The entity type being queried.</typeparam>
     /// <typeparam name="TKey">The key type for the entity.</typeparam>
     /// <param name="tableModel">The table model to populate with data and metadata.</param>
-    /// <param name="query">The Entity Framework Core queryable to execute.</param>
+    /// <param name="query">The queryable to execute.</param>
     /// <param name="tableState">The current state of the table including filters, sorting, and pagination.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     /// <remarks>
@@ -52,9 +52,8 @@ public interface ITableProvider
 /// Default implementation of <see cref="ITableProvider"/> that provides table data processing capabilities.
 /// </summary>
 /// <remarks>
-/// This implementation uses Entity Framework Core for data access and provides filtering,
-/// sorting, and pagination functionality. It integrates with the page state system to
-/// maintain table state across requests.
+/// This implementation provides filtering, sorting, and pagination functionality. It integrates
+/// with the page state system to maintain table state across requests.
 /// </remarks>
 public class TableProvider : ITableProvider
 {
@@ -70,14 +69,14 @@ public class TableProvider : ITableProvider
 
     /// <summary>
     /// Uses the given columns and tableState to extend the given queryable for appropriate
-    /// filtering and sorting, and then executes the query twice; once with .CountAsync() so that
+    /// filtering and sorting, and then executes the query twice; once to count rows so that
     /// PageCount can be calculated, and once with pagination applied. Places the results in the
-    /// given <see cref="TableModel{T, TKey}"/>. The queryable is expected to be an EF Core queryable.
+    /// given <see cref="TableModel{T, TKey}"/>.
     /// </summary>
     /// <typeparam name="T">The entity type being queried.</typeparam>
     /// <typeparam name="TKey">The key type for the entity.</typeparam>
     /// <param name="tableModel">The table model to populate with data and metadata.</param>
-    /// <param name="query">The Entity Framework Core queryable to execute.</param>
+    /// <param name="query">The queryable to execute.</param>
     /// <param name="tableState">The current state of the table including filters, sorting, and pagination.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     /// <remarks>
@@ -105,14 +104,13 @@ public class TableProvider : ITableProvider
         query = ApplyRangeFiltering(query, tableState, tableModel);
         query = ApplySorting(query, tableState, tableModel);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await QueryableExecution.CountAsync(query);
         var pageCount = (int)Math.Ceiling((double)totalCount / tableState.PageSize);
         // make sure we're not trying to exceed the available pages
         tableState.Page = Math.Min(tableState.Page, pageCount);
-        var pagedData = await query
+        var pagedData = await QueryableExecution.ToListAsync(query
             .Skip(Math.Max(tableState.Page - 1, 0) * tableState.PageSize)
-            .Take(tableState.PageSize)
-            .ToListAsync();
+            .Take(tableState.PageSize));
 
         var keySelector = tableModel.KeySelector?.CompileFast();
 

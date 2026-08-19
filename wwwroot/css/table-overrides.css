@@ -40,6 +40,39 @@
   opacity: 1;
 }
 
+[data-hc-modal] [data-hc-modal-box] {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 5rem);
+  overflow: hidden;
+}
+
+[data-hc-modal] [data-hc-modal-header] {
+  flex: 0 0 auto;
+}
+
+[data-hc-modal] [data-hc-modal-body] {
+  flex: 1 1 auto;
+  margin-top: 1rem;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+[data-hc-modal] [data-hc-table-sticky-header] {
+  background: var(--color-base-100, Canvas);
+  top: 0;
+}
+
+[data-hc-modal] [data-hc-table-sticky-header] th {
+  background: var(--color-base-100, Canvas);
+}
+
+[data-hc-modal] [data-hc-table-sticky-footer] {
+  background: var(--color-base-100, Canvas);
+  bottom: 0;
+}
+
 .hc-stale-region {
   opacity: 0.55;
   pointer-events: none;

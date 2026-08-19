@@ -5,7 +5,6 @@ using Htmx.Components.Table;
 using Htmx.Components.Utilities;
 using Htmx.Components.ViewResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using static Htmx.Components.Authorization.AuthConstants;
 using static Htmx.Components.State.PageStateConstants;
@@ -53,9 +52,8 @@ public partial class FormController
             return AuthorizationError(componentId);
 
         var key = (TKey)JsonSerializer.Deserialize(stringKey, modelHandler.KeyType)!;
-        var editingItem = await modelHandler.GetQueryable!()
-            .Where(modelHandler.GetKeyPredicate(key))
-            .SingleOrDefaultAsync();
+        var query = await modelHandler.GetReadQueryAsync();
+        var editingItem = await modelHandler.SingleOrDefaultAsync(query.Where(modelHandler.GetKeyPredicate(key)));
         if (editingItem == null)
             return CrudError("The selected item could not be found.", componentId);
         var pageState = this.GetPageState();

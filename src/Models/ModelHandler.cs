@@ -4,6 +4,7 @@ using Htmx.Components.Table;
 using Htmx.Components.Table.Models;
 using Htmx.Components.Models.Builders;
 using Htmx.Components.State;
+using Htmx.Components.Utilities;
 
 namespace Htmx.Components.Models;
 
@@ -87,7 +88,7 @@ public class ModelHandler<T, TKey> : ModelHandler
 
         // CRUD
         CrudFeatures = options.Crud.CrudFeatures;
-        GetQueryable = options.Crud.GetQueryable;
+        GetQuery = options.Crud.GetQuery;
         CreateModel = options.Crud.CreateModel;
         UpdateModel = options.Crud.UpdateModel;
         DeleteModel = options.Crud.DeleteModel;
@@ -121,7 +122,7 @@ public class ModelHandler<T, TKey> : ModelHandler
         }
     }
 
-    internal Func<IQueryable<T>>? GetQueryable { get; set; }
+    internal Func<Task<IQueryable<T>>>? GetQuery { get; set; }
     internal Func<T, Task<Result<T>>>? CreateModel { get; set; }
     internal Func<T, Task<Result<T>>>? UpdateModel { get; set; }
     internal Func<TKey, Task<Result>>? DeleteModel { get; set; }
@@ -175,10 +176,26 @@ public class ModelHandler<T, TKey> : ModelHandler
         var tableModelBuilder = new TableModelBuilder<T, TKey>(_keySelectorExpression, this, ServiceProvider);
         ConfigureTableModel?.Invoke(tableModelBuilder);
         var tableModel = await tableModelBuilder.BuildAsync();
-        var query = GetQueryable?.Invoke() ?? throw new InvalidOperationException("GetQueryable is not set.");
+        var query = await GetReadQueryAsync();
         await _tableProvider.FetchPageAsync(tableModel, query, tableState);
         return tableModel;
     }
+
+    internal async Task<IQueryable<T>> GetReadQueryAsync()
+    {
+        if (GetQuery == null)
+        {
+            throw new InvalidOperationException("Read source is not set.");
+        }
+
+        return await GetQuery() ?? throw new InvalidOperationException("Read source returned null.");
+    }
+
+    internal async Task<T> SingleAsync(IQueryable<T> query)
+        => await QueryableExecution.SingleAsync(query);
+
+    internal async Task<T?> SingleOrDefaultAsync(IQueryable<T> query)
+        => await QueryableExecution.SingleOrDefaultAsync(query);
 
     /// <summary>
     /// Builds an input model for the specified input name.
@@ -298,7 +315,7 @@ public enum CrudFeatures
 /// </remarks>
 internal class CrudOptions<T, TKey>
 {
-    public Func<IQueryable<T>>? GetQueryable { get; set; }
+    public Func<Task<IQueryable<T>>>? GetQuery { get; set; }
     public Func<T, Task<Result<T>>>? CreateModel { get; set; }
     public Func<T, Task<Result<T>>>? UpdateModel { get; set; }
     public Func<TKey, Task<Result>>? DeleteModel { get; set; }

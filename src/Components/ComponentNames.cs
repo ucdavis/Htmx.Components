@@ -24,4 +24,9 @@ public static class ComponentNames
     /// The name of the table view component.
     /// </summary>
     public const string Table = "Table";
+
+    /// <summary>
+    /// The name of the modal view component.
+    /// </summary>
+    public const string Modal = "Modal";
 }

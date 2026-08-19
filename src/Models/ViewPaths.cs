@@ -26,6 +26,12 @@ public class ViewPaths
     /// Defaults to "Default" which shows the standard authentication status display.
     /// </summary>
     public string AuthStatus { get; set; } = "Default";
+
+    /// <summary>
+    /// Gets or sets the view path for the modal component.
+    /// Defaults to "Default" which renders a DaisyUI dialog shell.
+    /// </summary>
+    public string Modal { get; set; } = "Default";
     
     /// <summary>
     /// Gets or sets the view path for input components.

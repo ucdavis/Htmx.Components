@@ -205,11 +205,13 @@ public class TableColumnModelBuilder<T, TKey> : BuilderBase<TableColumnModelBuil
                 actions.AddAction(action => action
                     .WithLabel("Save")
                     .WithIcon("fas fa-save")
-                    .WithHxPost($"/Form/{typeId}/Table/Save"));
+                    .WithHxPost($"/Form/{typeId}/Table/Save")
+                    .WithHxSwap("none"));
                 actions.AddAction(action => action
                     .WithLabel("Cancel")
                     .WithIcon("fas fa-times")
-                    .WithHxPost($"/Form/{typeId}/Table/CancelEdit"));
+                    .WithHxPost($"/Form/{typeId}/Table/CancelEdit")
+                    .WithHxSwap("none"));
             }
             else
             {
@@ -219,7 +221,8 @@ public class TableColumnModelBuilder<T, TKey> : BuilderBase<TableColumnModelBuil
                     actions.AddAction(action => action
                         .WithLabel("Edit")
                         .WithIcon("fas fa-edit")
-                        .WithHxPost($"/Form/{typeId}/Table/Edit?key={row.Key}"));
+                        .WithHxPost($"/Form/{typeId}/Table/Edit?key={row.Key}")
+                        .WithHxSwap("none"));
                 }
                 if (crudFeatures.HasFlag(CrudFeatures.Delete))
                 {
@@ -227,7 +230,8 @@ public class TableColumnModelBuilder<T, TKey> : BuilderBase<TableColumnModelBuil
                         .WithLabel("Delete")
                         .WithIcon("fas fa-trash")
                         .WithClass("text-red-600")
-                        .WithHxPost($"/Form/{typeId}/Table/Delete?key={row.Key}"));
+                        .WithHxPost($"/Form/{typeId}/Table/Delete?key={row.Key}")
+                        .WithHxSwap("none"));
                 }
             }
         });

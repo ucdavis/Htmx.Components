@@ -163,6 +163,7 @@ internal static class TestServices
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDataProtection();
+        services.AddSingleton(new ViewPaths());
         services.AddScoped<IPageState, PageState>();
         services.AddScoped<Table.ITableProvider, Table.TableProvider>();
         services.AddSingleton<IResourceOperationRegistry>(registry ?? new RecordingResourceOperationRegistry());

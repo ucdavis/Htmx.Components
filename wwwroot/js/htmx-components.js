@@ -9,12 +9,14 @@
     "request-lifecycle",
     "error-handling",
     "authentication-retry",
+    "modal",
   ];
   const pendingBlurRequests = new Set();
   const pendingRequestStates = new WeakMap();
   const pendingElementReferences = new WeakMap();
   const authRetryRequestContexts = new WeakMap();
   let authRetryInProgress = false;
+  let activeModal = null;
 
   function getRuntimeConfig() {
     const element = document.getElementById(configElementId);
@@ -102,6 +104,7 @@
     const initRoot = root instanceof Element || root instanceof Document ? root : document;
 
     syncTables(initRoot);
+    syncModals(initRoot);
     dispatchComponentEvent("htmx-components:load", initRoot, { root: initRoot });
   }
 
@@ -134,6 +137,37 @@
     }
 
     component.classList.toggle("editing-mode", toggle.classList.contains("editing-mode"));
+  }
+
+  function syncModals(root) {
+    const modals = [];
+    const closestModal = root instanceof Element
+      ? root.closest("[data-hc-modal]")
+      : null;
+
+    if (closestModal) {
+      modals.push(closestModal);
+    }
+
+    if (root.matches?.("[data-hc-modal]") && root !== closestModal) {
+      modals.push(root);
+    }
+
+    modals.push(...Array.from(root.querySelectorAll?.("[data-hc-modal]") || [])
+      .filter((modal) => !modals.includes(modal)));
+
+    modals.forEach(prepareModal);
+  }
+
+  function prepareModal(modal) {
+    if (modal.dataset.hcModalPrepared === "true") {
+      return;
+    }
+
+    modal.dataset.hcModalPrepared = "true";
+    modal.addEventListener("close", function () {
+      handleModalClosed(modal);
+    });
   }
 
   function dispatchComponentEvent(name, target, detail) {
@@ -742,6 +776,126 @@
     return Array.from(root.querySelectorAll(selector));
   }
 
+  function installModalBehavior() {
+    document.addEventListener("click", function (event) {
+      const closeTrigger = event.target instanceof Element
+        ? event.target.closest("[data-hc-modal-close]")
+        : null;
+
+      if (!closeTrigger) {
+        return;
+      }
+
+      const modal = closeTrigger.closest("[data-hc-modal]");
+      if (!modal) {
+        return;
+      }
+
+      closeModal(modal);
+    });
+
+    document.addEventListener("htmx:afterSwap", function (event) {
+      const trigger = resolveHtmxRequestTrigger(event.detail);
+      const target = event.detail?.target;
+
+      if (!(trigger instanceof Element) || !(target instanceof Element)) {
+        return;
+      }
+
+      const modalId = trigger.getAttribute("data-hc-open-modal");
+      if (!modalId) {
+        return;
+      }
+
+      const modal = document.getElementById(modalId);
+      if (!modal || !modal.matches("[data-hc-modal]") || !requestTargetedModalBody(trigger, modal, target)) {
+        return;
+      }
+
+      openModal(modal, trigger);
+    });
+  }
+
+  function resolveHtmxRequestTrigger(detail) {
+    const requestElement = detail?.requestConfig?.elt;
+    if (requestElement instanceof Element) {
+      return requestElement;
+    }
+
+    return detail?.elt instanceof Element ? detail.elt : null;
+  }
+
+  function requestTargetedModalBody(trigger, modal, target) {
+    const configuredTarget = modal.getAttribute("data-hc-modal-body-target");
+    const targetSelector = trigger.getAttribute("hx-target") || trigger.getAttribute("data-hx-target");
+    const body = configuredTarget
+      ? document.querySelector(configuredTarget)
+      : modal.querySelector("[data-hc-modal-body]");
+
+    if (!body || target !== body) {
+      return false;
+    }
+
+    return !targetSelector || targetSelector === configuredTarget || targetSelector === `#${body.id}`;
+  }
+
+  function openModal(modal, opener) {
+    prepareModal(modal);
+
+    if (activeModal && activeModal !== modal) {
+      closeModal(activeModal, { restoreFocus: false });
+    }
+
+    modal.hcModalOpener = opener;
+    activeModal = modal;
+
+    if (typeof modal.showModal === "function" && !modal.open) {
+      modal.showModal();
+      return;
+    }
+
+    if (!modal.open) {
+      modal.setAttribute("open", "");
+    }
+  }
+
+  function closeModal(modal, options) {
+    const settings = options || {};
+    modal.hcModalRestoreFocus = settings.restoreFocus !== false;
+
+    if (typeof modal.close === "function" && modal.open) {
+      modal.close();
+      return;
+    }
+
+    modal.removeAttribute("open");
+    handleModalClosed(modal);
+  }
+
+  function handleModalClosed(modal) {
+    const bodySelector = modal.getAttribute("data-hc-modal-body-target");
+    const body = bodySelector
+      ? document.querySelector(bodySelector)
+      : modal.querySelector("[data-hc-modal-body]");
+
+    if (body) {
+      body.replaceChildren();
+    }
+
+    if (activeModal === modal) {
+      activeModal = null;
+    }
+
+    const opener = modal.hcModalOpener;
+    const shouldRestoreFocus = modal.hcModalRestoreFocus !== false;
+    modal.hcModalOpener = null;
+    modal.hcModalRestoreFocus = true;
+
+    if (shouldRestoreFocus && opener instanceof HTMLElement && opener.isConnected) {
+      opener.focus();
+    }
+  }
+
   function installAuthenticationRetry() {
     document.body.addEventListener("htmx:beforeRequest", function (event) {
       const config = event.detail.requestConfig;
@@ -912,6 +1066,10 @@
 
   if (scriptEnabled("authentication-retry")) {
     installAuthenticationRetry();
+  }
+
+  if (scriptEnabled("modal")) {
+    installModalBehavior();
   }
 
   window.HtmxComponents = {

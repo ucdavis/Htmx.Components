@@ -164,6 +164,7 @@ public class TableModelBuilder<T, TKey> : BuilderBase<TableModelBuilder<T, TKey>
                 .WithLabel("Add New")
                 .WithIcon("fas fa-plus mr-1")
                 .WithHxPost($"/Form/{typeId}/Table/Create")
+                .WithHxSwap("none")
         ));
     }
 
