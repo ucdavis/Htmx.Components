@@ -37,6 +37,8 @@
     <HtmxComponentsCssInput>tools/tailwind/extracted-css-classes.input.css</HtmxComponentsCssInput>
     <HtmxComponentsTailwindSource>tools/tailwind/extracted-css-classes.css</HtmxComponentsTailwindSource>
     <HtmxComponentsCssOutput>content/extracted-css-classes.generated.css</HtmxComponentsCssOutput>
+    <HtmxComponentsRuntimeTsConfig>tools/runtime/tsconfig.json</HtmxComponentsRuntimeTsConfig>
+    <HtmxComponentsRuntimeOutput>wwwroot/js/htmx-components.js</HtmxComponentsRuntimeOutput>
     <HtmxComponentsNpmInstallStamp>node_modules/.install-stamp</HtmxComponentsNpmInstallStamp>
   </PropertyGroup>
 
@@ -81,6 +83,10 @@
     <EmbeddedResource Include="src/**/*.cshtml" />
   </ItemGroup>
 
+  <ItemGroup>
+    <HtmxComponentsRuntimeSource Include="tools/runtime/src/**/*.ts;tools/runtime/src/**/*.d.ts" />
+  </ItemGroup>
+
   <Target Name="HtmxComponentsNpmInstall"
           Inputs="package-lock.json"
           Outputs="$(HtmxComponentsNpmInstallStamp)"
@@ -96,6 +102,15 @@
           Outputs="$(HtmxComponentsCssOutput)"
           Condition="'$(DesignTimeBuild)' != 'true'">
     <Exec Command="npm run build:css" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+
+  <Target Name="HtmxComponentsBuildRuntime"
+          DependsOnTargets="HtmxComponentsNpmInstall"
+          BeforeTargets="Build;Pack"
+          Inputs="@(HtmxComponentsRuntimeSource);$(HtmxComponentsRuntimeTsConfig);package.json;package-lock.json"
+          Outputs="$(HtmxComponentsRuntimeOutput)"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm run build:js" WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
 
 </Project>

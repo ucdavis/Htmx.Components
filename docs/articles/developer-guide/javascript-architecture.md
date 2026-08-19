@@ -6,11 +6,18 @@ Htmx.Components uses a packaged static web asset runtime delivered through a uni
 
 ## Structure
 
-### Runtime Location
-The runtime is located in:
+### Source Location
+The maintainable runtime source is split into TypeScript modules under:
+```text
+/tools/runtime/src
+```
+
+The bundled static web asset is generated at:
 ```text
 /wwwroot/js/htmx-components.js
 ```
+
+`wwwroot/js/htmx-components.js` remains checked in and is the only browser asset referenced by the TagHelper.
 
 ### Available Behaviors
 
@@ -20,6 +27,7 @@ The runtime is located in:
 - **request-lifecycle**: Manages default pending UI state for HTMX requests
 - **error-handling**: Routes expected HTMX failures to scoped or global error regions
 - **authentication-retry**: Handles popup-based authentication retry for 401 errors
+- **modal**: Opens HTMX-loaded modal dialogs, handles close triggers, resets modal body content, and restores focus
 
 ### Custom Elements
 
@@ -53,24 +61,27 @@ The runtime registers lightweight custom elements that let server-rendered marku
 - `request-lifecycle`
 - `error-handling`
 - `authentication-retry`
+- `modal`
 
 ## Benefits
 
 1. **Packaged Delivery**: Behaviors are served from a versioned static web asset
 2. **Unified Management**: Single TagHelper manages all JavaScript inclusion
 3. **Flexible Inclusion**: Choose which scripts to include per page/section
-4. **Maintainability**: Runtime behavior lives in one browser-tested JavaScript module
+4. **Maintainability**: Runtime behavior lives in focused TypeScript modules that build to one browser-tested JavaScript asset
 5. **Performance**: Static assets can be cached independently of server-rendered pages
 
 ## Adding New Behaviors
 
 To add a new JavaScript behavior:
 
-1. Add the behavior installer to `/wwwroot/js/htmx-components.js`
+1. Add the behavior installer to `/tools/runtime/src/behaviors`
 2. Add the script name to the `allScripts` array in `HtmxScriptsTagHelper.GetScriptsToInclude()`
 3. Add the mapping in `HtmxScriptsTagHelper.MapScriptName()`
-4. Add unit or browser-smoke coverage for the behavior
-5. Document the new behavior in this file
+4. Register the installer in `/tools/runtime/src/index.ts`
+5. Run `npm run build:js` and commit the updated `/wwwroot/js/htmx-components.js`
+6. Add unit or browser-smoke coverage for the behavior
+7. Document the new behavior in this file
 
 ## Architecture Benefits
 
@@ -109,6 +120,7 @@ Each behavior is installed from the packaged runtime:
 | `request-lifecycle` | Pending UI behavior |
 | `error-handling` | Scoped/global HTMX error display |
 | `authentication-retry` | Authentication handling |
+| `modal` | HTMX-loaded modal dialog behavior |
 
 ### Request Lifecycle Contract
 

@@ -1,10 +1,14 @@
 {
   "scripts": {
+    "build:js": "npm run check:js && esbuild tools/runtime/src/index.ts --bundle --outfile=wwwroot/js/htmx-components.js --format=iife --target=es2020 --platform=browser --log-level=info",
+    "check:js": "tsc --project tools/runtime/tsconfig.json --noEmit",
     "build:css": "tailwindcss -i ./tools/tailwind/extracted-css-classes.input.css -o ./content/extracted-css-classes.generated.css --minify"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.1.10",
     "daisyui": "5.0.46",
-    "tailwindcss": "4.1.10"
+    "esbuild": "^0.28.2",
+    "tailwindcss": "4.1.10",
+    "typescript": "^7.0.2"
   }
 }
