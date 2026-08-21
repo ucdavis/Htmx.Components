@@ -133,7 +133,7 @@ Include HTMX in your layout file (`_Layout.cshtml`):
     @await Component.InvokeAsync("AuthStatus")
     
     <!-- Packaged JavaScript runtime behaviors -->
-    <htmx-scripts></htmx-scripts>
+    <htmx-runtime></htmx-runtime>
     
     <!-- Page State Management -->
     <htmx-page-state></htmx-page-state>

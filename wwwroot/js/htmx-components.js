@@ -1,132 +1,8 @@
 "use strict";
 (() => {
-  // tools/runtime/src/config.ts
-  var configElementId = "htmx-components-config";
-  var defaultScripts = [
-    "page-state-headers",
-    "table-inline-editing",
-    "blur-save-coordination",
-    "request-lifecycle",
-    "error-handling",
-    "authentication-retry",
-    "modal"
-  ];
-  function getRuntimeConfig() {
-    const element = document.getElementById(configElementId);
-    if (!element) {
-      return { scripts: defaultScripts };
-    }
-    try {
-      const config = JSON.parse(element.textContent || "{}");
-      return {
-        scripts: Array.isArray(config.Scripts) ? config.Scripts : Array.isArray(config.scripts) ? config.scripts : defaultScripts
-      };
-    } catch (error) {
-      console.warn("Htmx.Components runtime config could not be parsed.", error);
-      return { scripts: defaultScripts };
-    }
-  }
-  function scriptEnabled(runtimeConfig2, name) {
-    return runtimeConfig2.scripts.includes(name);
-  }
-
-  // tools/runtime/src/events.ts
-  function dispatchComponentEvent(name, target, detail) {
-    const eventTarget = target instanceof Element || target instanceof Document ? target : document;
-    eventTarget.dispatchEvent(new CustomEvent(name, {
-      bubbles: true,
-      detail
-    }));
-  }
-
   // tools/runtime/src/htmx-events.ts
   function getHtmxDetail(event) {
     return event instanceof CustomEvent && typeof event.detail === "object" && event.detail !== null ? event.detail : {};
-  }
-
-  // tools/runtime/src/behaviors/table-inline-editing.ts
-  function installTableInlineEditing() {
-    if (window.htmx) {
-      window.htmx.defineExtension("tableinline", {
-        isInlineSwap: function() {
-          return true;
-        }
-      });
-    }
-    document.addEventListener("htmx:afterSettle", function(event) {
-      const detail = getHtmxDetail(event);
-      syncTables(detail.target instanceof Element ? detail.target : document);
-    });
-  }
-  function syncTables(root) {
-    const tables = [];
-    const closestTable = root instanceof Element ? root.closest("[data-hc-table-component]") : null;
-    if (closestTable) {
-      tables.push(closestTable);
-    }
-    if (root instanceof Element && root.matches("[data-hc-table-component]") && root !== closestTable) {
-      tables.push(root);
-    }
-    tables.push(...Array.from(root.querySelectorAll("[data-hc-table-component]")).filter((table) => !tables.includes(table)));
-    tables.forEach(syncTableEditing);
-  }
-  function syncTableEditing(table) {
-    const component = table.closest("[data-hc-table-component]") || table;
-    const toggle = component.querySelector("[data-hc-table-edit-toggle]");
-    if (!toggle) {
-      return;
-    }
-    component.classList.toggle("editing-mode", toggle.classList.contains("editing-mode"));
-  }
-  function dispatchTableConnected(table) {
-    syncTableEditing(table);
-    dispatchComponentEvent("htmx-components:table-connected", table, { table });
-  }
-
-  // tools/runtime/src/custom-elements.ts
-  var HtmxTableElement = class extends HTMLElement {
-    connectedCallback() {
-      dispatchTableConnected(this);
-    }
-  };
-  var HtmxRequestScopeElement = class extends HTMLElement {
-    connectedCallback() {
-      this.dataset.hcRequestScope = this.dataset.hcRequestScope || "";
-      dispatchComponentEvent("htmx-components:request-scope-connected", this, { scope: this });
-    }
-  };
-  var HtmxErrorRegionElement = class extends HTMLElement {
-    connectedCallback() {
-      if (!this.hasAttribute("role")) {
-        this.setAttribute("role", "status");
-      }
-      if (!this.hasAttribute("aria-live")) {
-        this.setAttribute("aria-live", "polite");
-      }
-    }
-    clear() {
-      this.hidden = true;
-      this.replaceChildren();
-    }
-    show(message) {
-      this.hidden = false;
-      this.textContent = message;
-    }
-    showFragment(fragment) {
-      this.hidden = false;
-      this.replaceChildren(fragment);
-    }
-  };
-  function defineElement(name, type) {
-    if (!window.customElements || customElements.get(name)) {
-      return;
-    }
-    customElements.define(name, type);
-  }
-  function defineCustomElements() {
-    defineElement("htmx-table", HtmxTableElement);
-    defineElement("htmx-request-scope", HtmxRequestScopeElement);
-    defineElement("htmx-error-region", HtmxErrorRegionElement);
   }
 
   // tools/runtime/src/behaviors/authentication-retry.ts
@@ -847,47 +723,221 @@
     element.setAttribute(name, value);
   }
 
+  // tools/runtime/src/behaviors/table-inline-editing.ts
+  function installTableInlineEditing() {
+    if (window.htmx) {
+      window.htmx.defineExtension("tableinline", {
+        isInlineSwap: function() {
+          return true;
+        }
+      });
+    }
+    document.addEventListener("htmx-components:table-connected", function(event) {
+      const table = event.target;
+      if (table instanceof Element) {
+        syncTableEditing(table);
+      }
+    });
+    document.addEventListener("htmx:afterSettle", function(event) {
+      const detail = getHtmxDetail(event);
+      syncTables(detail.target instanceof Element ? detail.target : document);
+    });
+  }
+  function syncTables(root) {
+    const tables = [];
+    const closestTable = root instanceof Element ? root.closest("[data-hc-table-component]") : null;
+    if (closestTable) {
+      tables.push(closestTable);
+    }
+    if (root instanceof Element && root.matches("[data-hc-table-component]") && root !== closestTable) {
+      tables.push(root);
+    }
+    tables.push(...Array.from(root.querySelectorAll("[data-hc-table-component]")).filter((table) => !tables.includes(table)));
+    tables.forEach(syncTableEditing);
+  }
+  function syncTableEditing(table) {
+    const component = table.closest("[data-hc-table-component]") || table;
+    const toggle = component.querySelector("[data-hc-table-edit-toggle]");
+    if (!toggle) {
+      return;
+    }
+    component.classList.toggle("editing-mode", toggle.classList.contains("editing-mode"));
+  }
+
+  // tools/runtime/src/behaviors/registry.ts
+  var runtimeBehaviors = [
+    {
+      name: "page-state-headers",
+      install: installPageStateHeaders
+    },
+    {
+      name: "table-inline-editing",
+      install: installTableInlineEditing,
+      sync: syncTables
+    },
+    {
+      name: "blur-save-coordination",
+      install: installBlurSaveCoordination
+    },
+    {
+      name: "request-lifecycle",
+      install: installRequestLifecycleUx
+    },
+    {
+      name: "error-handling",
+      install: installErrorHandling
+    },
+    {
+      name: "authentication-retry",
+      install: installAuthenticationRetry
+    },
+    {
+      name: "modal",
+      install: installModalBehavior,
+      sync: syncModals
+    }
+  ];
+  var defaultBehaviors = runtimeBehaviors.map((behavior) => behavior.name);
+  function findBehavior(name) {
+    return runtimeBehaviors.find((behavior) => behavior.name === name);
+  }
+
+  // tools/runtime/src/config.ts
+  var configElementId = "htmx-components-runtime-config";
+  function getRuntimeConfig() {
+    const element = document.getElementById(configElementId);
+    if (!element) {
+      return { behaviors: defaultBehaviors };
+    }
+    try {
+      const config = JSON.parse(element.textContent || "{}");
+      return {
+        behaviors: Array.isArray(config.behaviors) ? normalizeBehaviors(config.behaviors) : defaultBehaviors
+      };
+    } catch (error) {
+      console.warn("Htmx.Components runtime config could not be parsed.", error);
+      return { behaviors: defaultBehaviors };
+    }
+  }
+  function normalizeBehaviors(behaviors) {
+    return behaviors.filter((behavior) => typeof behavior === "string" && defaultBehaviors.includes(behavior));
+  }
+
+  // tools/runtime/src/events.ts
+  function dispatchComponentEvent(name, target, detail) {
+    const eventTarget = target instanceof Element || target instanceof Document ? target : document;
+    eventTarget.dispatchEvent(new CustomEvent(name, {
+      bubbles: true,
+      detail
+    }));
+  }
+
+  // tools/runtime/src/custom-elements.ts
+  var HtmxTableElement = class extends HTMLElement {
+    connectedCallback() {
+      dispatchComponentEvent("htmx-components:table-connected", this, { table: this });
+    }
+  };
+  var HtmxRequestScopeElement = class extends HTMLElement {
+    connectedCallback() {
+      this.dataset.hcRequestScope = this.dataset.hcRequestScope || "";
+      dispatchComponentEvent("htmx-components:request-scope-connected", this, { scope: this });
+    }
+  };
+  var HtmxErrorRegionElement = class extends HTMLElement {
+    connectedCallback() {
+      if (!this.hasAttribute("role")) {
+        this.setAttribute("role", "status");
+      }
+      if (!this.hasAttribute("aria-live")) {
+        this.setAttribute("aria-live", "polite");
+      }
+    }
+    clear() {
+      this.hidden = true;
+      this.replaceChildren();
+    }
+    show(message) {
+      this.hidden = false;
+      this.textContent = message;
+    }
+    showFragment(fragment) {
+      this.hidden = false;
+      this.replaceChildren(fragment);
+    }
+  };
+  function defineElement(name, type) {
+    if (!window.customElements || customElements.get(name)) {
+      return;
+    }
+    customElements.define(name, type);
+  }
+  function defineCustomElements() {
+    defineElement("htmx-table", HtmxTableElement);
+    defineElement("htmx-request-scope", HtmxRequestScopeElement);
+    defineElement("htmx-error-region", HtmxErrorRegionElement);
+  }
+
   // tools/runtime/src/index.ts
   var runtimeConfig = getRuntimeConfig();
+  var runtimeState = getRuntimeState();
+  installConfiguredBehaviors(runtimeConfig.behaviors);
+  var activeRuntimeConfig = {
+    behaviors: Array.from(runtimeState.installedBehaviors)
+  };
   function init(root) {
     const initRoot = root instanceof Element || root instanceof Document ? root : document;
-    syncTables(initRoot);
-    syncModals(initRoot);
+    for (const behaviorName of activeRuntimeConfig.behaviors) {
+      const behavior = findBehavior(behaviorName);
+      behavior?.sync?.(initRoot);
+    }
     dispatchComponentEvent("htmx-components:load", initRoot, { root: initRoot });
   }
   defineCustomElements();
-  if (scriptEnabled(runtimeConfig, "page-state-headers")) {
-    installPageStateHeaders();
-  }
-  if (scriptEnabled(runtimeConfig, "table-inline-editing")) {
-    installTableInlineEditing();
-  }
-  if (scriptEnabled(runtimeConfig, "blur-save-coordination")) {
-    installBlurSaveCoordination();
-  }
-  if (scriptEnabled(runtimeConfig, "request-lifecycle")) {
-    installRequestLifecycleUx();
-  }
-  if (scriptEnabled(runtimeConfig, "error-handling")) {
-    installErrorHandling();
-  }
-  if (scriptEnabled(runtimeConfig, "authentication-retry")) {
-    installAuthenticationRetry();
-  }
-  if (scriptEnabled(runtimeConfig, "modal")) {
-    installModalBehavior();
-  }
   window.HtmxComponents = {
-    config: runtimeConfig,
-    init
+    config: activeRuntimeConfig,
+    init,
+    installedBehaviors: activeRuntimeConfig.behaviors
   };
-  if (window.htmx?.onLoad) {
-    window.htmx.onLoad(init);
-  } else if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function() {
-      init(document.body);
-    }, { once: true });
-  } else {
-    init(document.body);
+  registerLoadHandler();
+  init(document.body);
+  function installConfiguredBehaviors(behaviorNames) {
+    for (const name of behaviorNames) {
+      const behavior = findBehavior(name);
+      if (!behavior) {
+        continue;
+      }
+      if (!runtimeState.installedBehaviors.has(behavior.name)) {
+        behavior.install();
+        runtimeState.installedBehaviors.add(behavior.name);
+      }
+    }
+  }
+  function registerLoadHandler() {
+    if (runtimeState.loadHandlerRegistered) {
+      return;
+    }
+    runtimeState.loadHandlerRegistered = true;
+    if (window.htmx?.onLoad) {
+      window.htmx.onLoad(function(root) {
+        window.HtmxComponents?.init(root);
+      });
+      return;
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function() {
+        window.HtmxComponents?.init(document.body);
+      }, { once: true });
+    }
+  }
+  function getRuntimeState() {
+    const stateContainer = window;
+    if (!stateContainer.__htmxComponentsRuntimeState) {
+      stateContainer.__htmxComponentsRuntimeState = {
+        installedBehaviors: /* @__PURE__ */ new Set(),
+        loadHandlerRegistered: false
+      };
+    }
+    return stateContainer.__htmxComponentsRuntimeState;
   }
 })();

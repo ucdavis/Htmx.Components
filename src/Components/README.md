@@ -62,7 +62,7 @@ No additional configuration is needed - the `ComponentViewLocationExpander` is a
 ## Notes
 
 - This pattern maintains full compatibility with daisyUI and Tailwind CSS
-- JavaScript behaviors are delivered through the `htmx-scripts` TagHelper system
+- JavaScript behaviors are delivered through the `htmx-runtime` TagHelper system
 - Views are discovered automatically through the custom view location expander
 - Components remain fully testable and reusable
 - **Component-specific attributes now use component namespaces:**

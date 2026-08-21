@@ -1,9 +1,8 @@
 import { dispatchComponentEvent } from "./events";
-import { dispatchTableConnected } from "./behaviors/table-inline-editing";
 
 export class HtmxTableElement extends HTMLElement {
   connectedCallback(): void {
-    dispatchTableConnected(this);
+    dispatchComponentEvent("htmx-components:table-connected", this, { table: this });
   }
 }
 

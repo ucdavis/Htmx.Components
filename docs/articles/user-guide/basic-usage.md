@@ -13,17 +13,17 @@ For setup instructions, see the **[Getting Started Guide](../getting-started.md)
 
 ### JavaScript Behaviors
 
-The `<htmx-scripts>` TagHelper provides a unified way to include the packaged Htmx.Components browser runtime:
+The `<htmx-runtime>` TagHelper provides a unified way to include the packaged Htmx.Components browser runtime:
 
 ```html
 <!-- Include all behaviors (default) -->
-<htmx-scripts></htmx-scripts>
+<htmx-runtime></htmx-runtime>
 
 <!-- Include only specific behaviors -->
-<htmx-scripts include="page-state-headers,table-inline-editing"></htmx-scripts>
+<htmx-runtime include-behaviors="page-state-headers,table-inline-editing"></htmx-runtime>
 
 <!-- Exclude specific behaviors -->
-<htmx-scripts exclude="authentication-retry"></htmx-scripts>
+<htmx-runtime exclude-behaviors="authentication-retry"></htmx-runtime>
 ```
 
 **Available Behaviors:**

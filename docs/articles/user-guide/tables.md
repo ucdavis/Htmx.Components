@@ -92,10 +92,10 @@ Tables with inline editing require the `table-inline-editing` JavaScript behavio
 
 ```html
 <!-- Include all behaviors (includes table-inline-editing) -->
-<htmx-scripts></htmx-scripts>
+<htmx-runtime></htmx-runtime>
 
 <!-- Include only table-inline-editing -->
-<htmx-scripts include="table-inline-editing"></htmx-scripts>
+<htmx-runtime include-behaviors="table-inline-editing"></htmx-runtime>
 ```
 
 The `table-inline-editing` behavior provides:

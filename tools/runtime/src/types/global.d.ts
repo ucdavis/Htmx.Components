@@ -13,9 +13,10 @@ declare global {
     htmx?: HtmxRuntime;
     HtmxComponents?: {
       config: {
-        scripts: string[];
+        behaviors: string[];
       };
       init(root?: Element | Document): void;
+      installedBehaviors?: string[];
     };
   }
 }

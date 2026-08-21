@@ -1,65 +1,88 @@
-import { getRuntimeConfig, scriptEnabled } from "./config";
+import { getRuntimeConfig } from "./config";
 import { defineCustomElements } from "./custom-elements";
 import { dispatchComponentEvent } from "./events";
-import { installAuthenticationRetry } from "./behaviors/authentication-retry";
-import { installBlurSaveCoordination } from "./behaviors/blur-save-coordination";
-import { installErrorHandling } from "./behaviors/error-handling";
-import { installModalBehavior, syncModals } from "./behaviors/modal";
-import { installPageStateHeaders } from "./behaviors/page-state-headers";
-import { installRequestLifecycleUx } from "./behaviors/request-lifecycle";
-import { installTableInlineEditing, syncTables } from "./behaviors/table-inline-editing";
+import { findBehavior, RuntimeBehaviorName } from "./behaviors/registry";
+
+interface RuntimeState {
+  installedBehaviors: Set<string>;
+  loadHandlerRegistered: boolean;
+}
 
 const runtimeConfig = getRuntimeConfig();
+const runtimeState = getRuntimeState();
+installConfiguredBehaviors(runtimeConfig.behaviors);
+const activeRuntimeConfig = {
+  behaviors: Array.from(runtimeState.installedBehaviors) as RuntimeBehaviorName[],
+};
 
 function init(root?: Element | Document): void {
   const initRoot = root instanceof Element || root instanceof Document ? root : document;
 
-  syncTables(initRoot);
-  syncModals(initRoot);
+  for (const behaviorName of activeRuntimeConfig.behaviors) {
+    const behavior = findBehavior(behaviorName);
+    behavior?.sync?.(initRoot);
+  }
+
   dispatchComponentEvent("htmx-components:load", initRoot, { root: initRoot });
 }
 
 defineCustomElements();
 
-if (scriptEnabled(runtimeConfig, "page-state-headers")) {
-  installPageStateHeaders();
-}
-
-if (scriptEnabled(runtimeConfig, "table-inline-editing")) {
-  installTableInlineEditing();
-}
-
-if (scriptEnabled(runtimeConfig, "blur-save-coordination")) {
-  installBlurSaveCoordination();
-}
-
-if (scriptEnabled(runtimeConfig, "request-lifecycle")) {
-  installRequestLifecycleUx();
-}
-
-if (scriptEnabled(runtimeConfig, "error-handling")) {
-  installErrorHandling();
-}
-
-if (scriptEnabled(runtimeConfig, "authentication-retry")) {
-  installAuthenticationRetry();
-}
-
-if (scriptEnabled(runtimeConfig, "modal")) {
-  installModalBehavior();
-}
-
 window.HtmxComponents = {
-  config: runtimeConfig,
+  config: activeRuntimeConfig,
   init,
+  installedBehaviors: activeRuntimeConfig.behaviors,
 };
 
-if (window.htmx?.onLoad) {
-  window.htmx.onLoad(init);
-} else if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", function () {
-    init(document.body);
-  }, { once: true });
-} else {
-  init(document.body);
+registerLoadHandler();
+init(document.body);
+
+function installConfiguredBehaviors(behaviorNames: RuntimeBehaviorName[]): void {
+  for (const name of behaviorNames) {
+    const behavior = findBehavior(name);
+    if (!behavior) {
+      continue;
+    }
+
+    if (!runtimeState.installedBehaviors.has(behavior.name)) {
+      behavior.install();
+      runtimeState.installedBehaviors.add(behavior.name);
+    }
+  }
+}
+
+function registerLoadHandler(): void {
+  if (runtimeState.loadHandlerRegistered) {
+    return;
+  }
+
+  runtimeState.loadHandlerRegistered = true;
+
+  if (window.htmx?.onLoad) {
+    window.htmx.onLoad(function (root) {
+      window.HtmxComponents?.init(root);
+    });
+    return;
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      window.HtmxComponents?.init(document.body);
+    }, { once: true });
+  }
+}
+
+function getRuntimeState(): RuntimeState {
+  const stateContainer = window as unknown as {
+    __htmxComponentsRuntimeState?: RuntimeState;
+  };
+
+  if (!stateContainer.__htmxComponentsRuntimeState) {
+    stateContainer.__htmxComponentsRuntimeState = {
+      installedBehaviors: new Set<string>(),
+      loadHandlerRegistered: false,
+    };
+  }
+
+  return stateContainer.__htmxComponentsRuntimeState;
 }

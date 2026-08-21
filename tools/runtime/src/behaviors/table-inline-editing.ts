@@ -1,4 +1,3 @@
-import { dispatchComponentEvent } from "../events";
 import { getHtmxDetail } from "../htmx-events";
 
 export function installTableInlineEditing(): void {
@@ -9,6 +8,13 @@ export function installTableInlineEditing(): void {
       },
     });
   }
+
+  document.addEventListener("htmx-components:table-connected", function (event) {
+    const table = event.target;
+    if (table instanceof Element) {
+      syncTableEditing(table);
+    }
+  });
 
   document.addEventListener("htmx:afterSettle", function (event) {
     const detail = getHtmxDetail(event);
@@ -45,9 +51,4 @@ export function syncTableEditing(table: Element): void {
   }
 
   component.classList.toggle("editing-mode", toggle.classList.contains("editing-mode"));
-}
-
-export function dispatchTableConnected(table: Element): void {
-  syncTableEditing(table);
-  dispatchComponentEvent("htmx-components:table-connected", table, { table });
 }

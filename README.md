@@ -51,7 +51,7 @@ public class AdminController : Controller
 @await Component.InvokeAsync("AuthStatus")
 @await Component.InvokeAsync("Table", Model)
 
-<htmx-scripts></htmx-scripts> <!-- Packaged runtime behaviors -->
+<htmx-runtime></htmx-runtime> <!-- Packaged runtime behaviors -->
 <htmx-page-state></htmx-page-state> <!-- State management -->
 ```
 
