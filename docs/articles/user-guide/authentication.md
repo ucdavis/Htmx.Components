@@ -235,7 +235,7 @@ If users get stuck in authentication loops:
 ### HTMX Auth Popup Not Working
 
 1. Verify the popup configuration is correct
-2. Check that `<htmx-runtime></htmx-runtime>` includes `authentication-retry`
+2. Check that `<htmx-runtime></htmx-runtime>` includes `authentication-retry`, or include it explicitly with `include-behaviors`
 3. Ensure popup blockers are not interfering
 
 ## Next Steps

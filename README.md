@@ -18,7 +18,11 @@ A comprehensive ASP.NET Core library for building interactive web applications w
 
 ```csharp
 // Program.cs - Minimal setup
-builder.Services.AddHtmxComponents();
+builder.Services.AddHtmxComponents(options =>
+{
+    options.WithAuthorizationRequirementFactory<PermissionRequirementFactory>();
+    options.WithResourceOperationRegistry<ResourceOperationRegistry>();
+});
 builder.Services.AddControllersWithViews()
     .AddHtmxComponentsApplicationPart();
 
@@ -47,6 +51,8 @@ public class AdminController : Controller
 
 ```html
 <!-- Layout - Components just work -->
+<script src="https://unpkg.com/htmx.org@2/dist/htmx.min.js"></script>
+
 @await Component.InvokeAsync("NavBar")
 @await Component.InvokeAsync("AuthStatus")
 @await Component.InvokeAsync("Table", Model)
@@ -71,6 +77,7 @@ public class AdminController : Controller
 - .NET 10.0+
 - ASP.NET Core
 - HTMX 2.0+
+- Tailwind CSS/DaisyUI recommended for the built-in component styles
 
 ## 🤝 Contributing
 

@@ -271,8 +271,9 @@ The framework includes a JavaScript delivery system that enables server-side beh
 - `request-lifecycle`: Default pending UI behavior
 - `error-handling`: Scoped/global error display
 - `authentication-retry`: Authentication retry handling
+- `modal`: HTMX-loaded modal dialog behavior
 
-**Custom Elements**: Server-rendered components use `htmx-table`, `htmx-request-scope`, and `htmx-error-region` to scope table identity, pending UI, and safe error display without page-specific inline behavior code.
+**Custom Elements and Data Contracts**: Server-rendered components use `htmx-table`, `htmx-request-scope`, and `htmx-error-region` to scope table identity, pending UI, and safe error display without page-specific inline behavior code. Modal shells use `data-hc-modal`, `data-hc-modal-body`, and `data-hc-modal-close` attributes for native dialog behavior.
 
 **Benefits:**
 - **Static Asset Delivery**: The runtime is versioned and cacheable
