@@ -31,10 +31,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHtmxComponents(options =>
 {
     // Required: Configure authorization
-    options.WithAuthorizationRequirementFactory<SimplePermissionFactory>();
+    options.WithAuthorizationRequirementFactory<PermissionRequirementFactory>();
     options.WithResourceOperationRegistry<InMemoryResourceRegistry>();
     
-    // Optional: Configure navigation (generally not necessary unless declaritive navigation in
+    // Optional: Configure navigation (generally not necessary unless declarative navigation in
     // controllers via NavAction and NavActionGroup attributes is insufficient)
     options.WithNavBuilder(nav =>
     {
@@ -119,7 +119,7 @@ Include HTMX in your layout file (`_Layout.cshtml`):
     <title>My App</title>
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@2/dist/htmx.min.js"></script>
-    <!-- Recommended: Include Tailwind CSS with daisyUI for default styling -->
+    <!-- Recommended: Include your Tailwind CSS build with DaisyUI and Htmx.Components classes -->
 </head>
 <body>
     <!-- Navigation Component -->
@@ -133,7 +133,7 @@ Include HTMX in your layout file (`_Layout.cshtml`):
     @await Component.InvokeAsync("AuthStatus")
     
     <!-- Packaged JavaScript runtime behaviors -->
-    <htmx-scripts></htmx-scripts>
+    <htmx-runtime></htmx-runtime>
     
     <!-- Page State Management -->
     <htmx-page-state></htmx-page-state>
@@ -162,16 +162,20 @@ using Htmx.Components.NavBar;
 public class UsersController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly IModelHandlerFactoryGeneric _modelHandlerFactory;
 
-    public UsersController(ApplicationDbContext context)
+    public UsersController(
+        ApplicationDbContext context,
+        IModelHandlerFactoryGeneric modelHandlerFactory)
     {
         _context = context;
+        _modelHandlerFactory = modelHandlerFactory;
     }
 
     [NavAction(DisplayName = "Users", Icon = "fas fa-users")]
     public async Task<IActionResult> Index()
     {
-        var modelHandler = await _modelRegistry.GetModelHandler<User, int>("users", ModelUI.Table);
+        var modelHandler = await _modelHandlerFactory.Get<User, int>("users", ModelUI.Table);
         var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync();
         // Note that we are returning an ObjectResult here rather than a ViewResult.
         // Htmx.Components makes use of result filters and action context to determine whether to return
@@ -193,8 +197,8 @@ public class UsersController : Controller
                })
                .WithTable(table =>
                {
-                   table.AddSelectorColumn(u => u.Name);
-                   table.AddSelectorColumn(u => u.Email);
+                   table.AddSelectorColumn(u => u.Name, column => column.WithEditable());
+                   table.AddSelectorColumn(u => u.Email, column => column.WithEditable());
                    table.AddSelectorColumn(u => u.CreatedAt);
                    table.AddCrudDisplayColumn();
                    table.WithCrudActions();

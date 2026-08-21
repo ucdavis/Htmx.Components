@@ -13,17 +13,17 @@ For setup instructions, see the **[Getting Started Guide](../getting-started.md)
 
 ### JavaScript Behaviors
 
-The `<htmx-scripts>` TagHelper provides a unified way to include the packaged Htmx.Components browser runtime:
+The `<htmx-runtime>` TagHelper provides a unified way to include the packaged Htmx.Components browser runtime:
 
 ```html
 <!-- Include all behaviors (default) -->
-<htmx-scripts></htmx-scripts>
+<htmx-runtime></htmx-runtime>
 
 <!-- Include only specific behaviors -->
-<htmx-scripts include="page-state-headers,table-inline-editing"></htmx-scripts>
+<htmx-runtime include-behaviors="page-state-headers,table-inline-editing"></htmx-runtime>
 
 <!-- Exclude specific behaviors -->
-<htmx-scripts exclude="authentication-retry"></htmx-scripts>
+<htmx-runtime exclude-behaviors="authentication-retry"></htmx-runtime>
 ```
 
 **Available Behaviors:**
@@ -33,6 +33,7 @@ The `<htmx-scripts>` TagHelper provides a unified way to include the packaged Ht
 - `request-lifecycle`: Default pending UI behavior for HTMX requests
 - `error-handling`: Scoped/global error display for HTMX failures
 - `authentication-retry`: Handles authentication retry with popup windows
+- `modal`: Opens HTMX-loaded modal dialogs, handles close triggers, resets modal body content, and restores focus
 
 The behaviors are delivered by the packaged `htmx-components.js` static web asset with a small JSON configuration block emitted by the TagHelper.
 
@@ -42,38 +43,32 @@ The default runtime also registers the first-party custom elements used by compo
 - `htmx-request-scope`: applies pending UI to the relevant region during HTMX requests
 - `htmx-error-region`: receives safe, user-facing HTMX error messages
 
-## 3. Set Up Tailwind CSS (Recommended)
+## Set Up Tailwind CSS (Recommended)
 
-Htmx.Components is designed to work with Tailwind CSS for optimal styling. Here's how to set it up using the modern CSS directives approach:
+Htmx.Components is designed to work with Tailwind CSS and DaisyUI for its default styling. The library package includes a Tailwind source file at `content/extracted-css-classes.css` so the component classes used by the Razor views are included in your app's generated CSS.
 
-### Create Tools Directory Structure
+### Create Build Tooling
 
-Create a `Tools` directory in your project root with the following files:
+Create a `tools` directory in your project root with the following files:
 
-**Tools/package.json:**
+**tools/package.json:**
 ```json
 {
     "name": "build",
     "version": "1.0.0",
-    "main": "index.js",
     "scripts": {
         "build:css": "npx tailwindcss -i input.css -o ../wwwroot/css/site.css --minify",
         "watch:css": "npx tailwindcss -i input.css -o ../wwwroot/css/site.css --watch"
     },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "description": "",
     "devDependencies": {
-        "@tailwindcss/cli": "^4.0.15",
-        "daisyui": "^5.0.9",
-        "tailwindcss": "^4.0.15"
-    },
-    "dependencies": {}
+        "@tailwindcss/cli": "^4.1.10",
+        "daisyui": "^5.0.46",
+        "tailwindcss": "^4.1.10"
+    }
 }
 ```
 
-**Tools/input.css:**
+**tools/input.css:**
 ```css
 @import "tailwindcss" source(none);
 @source "../Views/**/*.{html,cshtml}";
@@ -81,6 +76,8 @@ Create a `Tools` directory in your project root with the following files:
 @import "../../Htmx.Components/content/extracted-css-classes.css";
 @plugin "daisyui";
 ```
+
+Adjust the `@import` path if your application consumes Htmx.Components from a NuGet package cache rather than a sibling project or repository checkout.
 
 ### Configure MSBuild Integration
 
@@ -90,10 +87,10 @@ Add the following to your `.csproj` file to automatically build Tailwind CSS dur
   <!-- Tailwind CSS Build -->
   <PropertyGroup>
     <TailwindOutputFile>wwwroot/css/site.css</TailwindOutputFile>
-    <TailwindInputFile>Tools/input.css</TailwindInputFile>
+    <TailwindInputFile>tools/input.css</TailwindInputFile>
   </PropertyGroup>
   <Target Name="BuildTailwind" AfterTargets="ResolveProjectReferences" Inputs="$(TailwindInputFile)" Outputs="$(TailwindOutputFile)">
-    <Exec Command="cd $(ProjectDir)Tools &amp;&amp; npm run build:css" />
+    <Exec Command="npm run build:css" WorkingDirectory="tools" />
     <Touch Files="$(TailwindOutputFile)" AlwaysCreate="true" />
   </Target>
 ```
@@ -103,10 +100,10 @@ You might also want to ensure that npm packages are installed before building Ta
 ```xml
   <!-- Only run npm install when package.json has been modified or .install-stamp doesn't exist -->
   <PropertyGroup>
-    <NpmInstallStampFile>Tools/node_modules/.install-stamp</NpmInstallStampFile>
+    <NpmInstallStampFile>tools/node_modules/.install-stamp</NpmInstallStampFile>
   </PropertyGroup>
-  <Target Name="EnsureNpmPackages" BeforeTargets="BuildTailwind" Inputs="Tools\package.json" Outputs="$(NpmInstallStampFile)">
-    <Exec Command="npm install" WorkingDirectory="Tools" />
+  <Target Name="EnsureNpmPackages" BeforeTargets="BuildTailwind" Inputs="tools/package.json" Outputs="$(NpmInstallStampFile)">
+    <Exec Command="npm install" WorkingDirectory="tools" />
     <Touch Files="$(NpmInstallStampFile)" AlwaysCreate="true" />
   </Target>
 ```
@@ -116,8 +113,8 @@ You might also want to ensure that npm packages are installed before building Ta
 You can also run Tailwind CSS manually:
 
 ```bash
-# Navigate to Tools directory
-cd Tools
+# Navigate to the tools directory
+cd tools
 
 # Install dependencies (first time only)
 npm install
@@ -129,7 +126,7 @@ npm run build:css
 npm run watch:css
 ```
 
-## 4. Create Your First Controller
+## Create Your First Controller
 
 Create a controller with navigation attributes:
 
@@ -160,7 +157,7 @@ public class AdminController : Controller
 }
 ```
 
-## 5. Create Views
+## Create Views
 
 Create corresponding view files:
 

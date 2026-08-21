@@ -12,25 +12,37 @@ Each component is organized with all related files in a single folder:
 src/Components/
 ├── AuthStatus/
 │   ├── AuthStatusViewComponent.cs
-│   ├── AuthStatusViewModel.cs
 │   ├── IAuthStatusProvider.cs
 │   ├── DefaultAuthStatusProvider.cs
 │   ├── AuthStatusUpdateAttribute.cs      ← Component-specific attribute
 │   ├── Internal/
 │   │   └── AuthStatusUpdateFilter.cs    ← Internal infrastructure
+│   ├── Models/
+│   │   └── AuthStatusViewModel.cs
 │   └── Views/
 │       └── Default.cshtml
 ├── Table/
 │   ├── TableViewComponent.cs
 │   ├── TableProvider.cs
-│   ├── TableActionAttributes.cs          ← Component-specific attributes
 │   ├── Internal/
+│   │   ├── TableActionAttributes.cs     ← Internal action attributes
 │   │   ├── TableOobEditFilter.cs        ← Internal infrastructure
 │   │   └── TableOobRefreshFilter.cs     ← Internal infrastructure
+│   ├── Models/
+│   │   ├── TableModel.cs
+│   │   ├── TableColumnModel.cs
+│   │   └── TableState.cs
 │   └── Views/
 │       ├── _Table.cshtml
 │       ├── _TableBody.cshtml
 │       └── ... (other table partials)
+├── Modal/
+│   ├── ModalViewComponent.cs
+│   ├── Models/
+│   │   ├── ModalModel.cs
+│   │   └── ModalSize.cs
+│   └── Views/
+│       └── Default.cshtml
 └── NavBar/
     ├── NavBarViewComponent.cs
     ├── AttributeNavProvider.cs
@@ -76,18 +88,28 @@ public class AdminController : Controller
 ```
 
 ### Table Component
-Internal table attributes and filters remain in the Table namespace:
+Internal table action attributes and filters use the Table internal namespace:
 ```csharp
-using Htmx.Components.Table;
 using Htmx.Components.Table.Internal;
 
 // Internal attributes used by the framework
-[TableEditAction]      // In Table namespace
-[TableRefreshAction]   // In Table namespace
+[TableEditAction]      // In Htmx.Components.Table.Internal
+[TableRefreshAction]   // In Htmx.Components.Table.Internal
 
 // Internal filters (not used directly by consumers)
 public class TableOobEditFilter      // In Table.Internal namespace
 public class TableOobRefreshFilter   // In Table.Internal namespace
+```
+
+### Modal Component
+```csharp
+using Htmx.Components.Modal.Models;
+
+@await Component.InvokeAsync("Modal", new ModalModel
+{
+    Id = "product-modal",
+    Title = "Product"
+})
 ```
 
 ### General Attributes
@@ -128,7 +150,8 @@ When creating new components, follow the self-contained pattern:
 2. Place the ViewComponent class and related files in the folder
 3. Create a `Views/` subfolder for Razor views
 4. Place component-specific attributes in the same folder
-5. Use the component's namespace for attributes
+5. Place public models in a `Models/` subfolder when they are part of the consumer-facing API
+6. Use the component's namespace for public attributes and models
 
 This pattern ensures your components are well-organized and easy to maintain.
 

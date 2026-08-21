@@ -261,16 +261,16 @@ ViewComponents alone don't automatically handle HTMX responses. The framework in
 
 ## First-Party Browser Runtime
 
-**Decision**: Ship a small first-party browser runtime as a packaged static web asset, with server-side behavior selection through `<htmx-scripts>`.
+**Decision**: Ship a small first-party browser runtime as a packaged static web asset, with server-side behavior selection through `<htmx-runtime>`.
 
 **Rationale**:
 - **Scoped Behavior**: Custom elements (`htmx-table`, `htmx-request-scope`, and `htmx-error-region`) keep pending UI, error regions, table identity, and lifecycle behavior local to the component instance
 - **Cacheable Delivery**: Runtime code is served from `/_content/Htmx.Components/js/htmx-components.js` with static asset versioning
-- **Small Razor Payloads**: Razor emits configuration JSON and markup, not generated behavior scripts
+- **Small Razor Payloads**: Razor emits configuration JSON and markup, not generated behavior code
 - **Reusable Contract**: Applications can exercise the same runtime contract across tables, forms, dashboards, and other HTMX workflows
 
 **Trade-offs**:
-- Consumers need to include `<htmx-scripts>` and HTMX itself in their layout
+- Consumers need to include `<htmx-runtime>` and HTMX itself in their layout
 - Runtime behavior needs browser-level smoke coverage in addition to server-side tests
 
 [↑ Back to outline](#outline)

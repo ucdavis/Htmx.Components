@@ -58,7 +58,7 @@ public class CatalogController : Controller
                     _dbContext.Products.Remove(product);
                     await _dbContext.SaveChangesAsync();
                 }
-                return Result.Success();
+                return Result.Ok();
             })
             .WithTable(table => table
                 .WithCrudActions()
@@ -88,14 +88,14 @@ The `Table` ViewComponent renders an `htmx-table` root and a nested `htmx-reques
 
 ## JavaScript Requirements
 
-Tables with inline editing require the `table-inline-editing` JavaScript behavior:
+Tables with inline editing require the `table-inline-editing` JavaScript behavior. In normal layouts, include all behaviors so tables also get pending UI and scoped error handling:
 
 ```html
 <!-- Include all behaviors (includes table-inline-editing) -->
-<htmx-scripts></htmx-scripts>
+<htmx-runtime></htmx-runtime>
 
-<!-- Include only table-inline-editing -->
-<htmx-scripts include="table-inline-editing"></htmx-scripts>
+<!-- Minimal table behavior set -->
+<htmx-runtime include-behaviors="table-inline-editing,request-lifecycle,error-handling"></htmx-runtime>
 ```
 
 The `table-inline-editing` behavior provides:
@@ -212,11 +212,10 @@ Tables work seamlessly with Entity Framework Core through the `WithQueryable()` 
 
 ### Built-in Filters
 
-Easily filter tables with built-in text filters:
+Selector columns are filterable by default. Add the column normally and the table provider will use the built-in filter helper:
 
 ```csharp
-table.AddSelectorColumn(p => p.Name, col => col
-    .WithFilter());
+table.AddSelectorColumn(p => p.Name);
 ```
 
 ### Custom Filters
@@ -235,7 +234,7 @@ table.AddSelectorColumn(p => p.Status, col => col
 
 ### Range Filters
 
-Useful for dates and numeric values:
+Range filters are available for dates and numeric values, but the API is still experimental and may need app-specific testing for non-date types:
 
 ```csharp
 table.AddSelectorColumn(p => p.CreatedDate, col => col
@@ -259,7 +258,7 @@ table.AddSelectorColumn(p => p.Name); // Automatically sortable
 
 ## Pagination
 
-Pagination is automatically handled by the table provider. Configure page size:
+Pagination is automatically handled by the table provider. The table state is stored in page state; use the table's component-specific partition when you need to set an initial page size or modify table state yourself:
 
 ```csharp
 // In your action
@@ -489,13 +488,18 @@ Implement complex filtering scenarios:
 ```csharp
 public async Task<IActionResult> FilterByCategory(string category)
 {
-    var modelHandler = await _modelRegistry.GetModelHandler<Product, int>("products", ModelUI.Table);
-    var tableState = this.GetPageState().GetOrCreate<TableState>("Table", "TableState", () => new());
+    var componentId = TableComponentIdentity.Ensure("catalog-products");
+    var modelHandler = await _modelHandlerFactory.Get<Product, int>("products", ModelUI.Table);
+    var tableState = this.GetPageState().GetOrCreate<TableState>(
+        TableComponentIdentity.TableStatePartition(componentId),
+        TableStateKeys.TableState,
+        () => new());
     
     // Apply custom filter
     tableState.Filters["Category"] = category;
     
     var tableModel = await modelHandler.BuildTableModelAndFetchPageAsync(tableState);
+    tableModel.ComponentId = componentId;
     return Ok(tableModel);
 }
 ```
@@ -529,7 +533,7 @@ private async Task<TableModel<Product, int>> GetProductsPage(int page, int pageS
         .ToListAsync();
         
     // Use the async builder for consistency
-    var handler = await _modelRegistry.GetModelHandler<Product, int>("products", ModelUI.Table);
+    var handler = await _modelHandlerFactory.Get<Product, int>("products", ModelUI.Table);
     var tableModel = await handler.BuildTableModelAsync();
     return tableModel;
 }

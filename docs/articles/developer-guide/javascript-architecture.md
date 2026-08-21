@@ -2,15 +2,22 @@
 
 ## Overview
 
-Htmx.Components uses a packaged static web asset runtime delivered through a unified TagHelper system. The TagHelper emits versioned script references plus a small JSON configuration block so pages can choose which runtime behaviors are active without generating inline JavaScript.
+Htmx.Components uses a packaged static web asset runtime delivered through a unified TagHelper system. The TagHelper emits one versioned runtime reference plus a small JSON configuration block so pages can choose which runtime behaviors are active without generating inline JavaScript.
 
 ## Structure
 
-### Runtime Location
-The runtime is located in:
+### Source Location
+The maintainable runtime source is split into TypeScript modules under:
+```text
+/tools/runtime/src
+```
+
+The bundled static web asset is generated at:
 ```text
 /wwwroot/js/htmx-components.js
 ```
+
+`wwwroot/js/htmx-components.js` remains checked in and is the only browser asset referenced by the TagHelper.
 
 ### Available Behaviors
 
@@ -20,10 +27,11 @@ The runtime is located in:
 - **request-lifecycle**: Manages default pending UI state for HTMX requests
 - **error-handling**: Routes expected HTMX failures to scoped or global error regions
 - **authentication-retry**: Handles popup-based authentication retry for 401 errors
+- **modal**: Opens HTMX-loaded modal dialogs, handles close triggers, resets modal body content, and restores focus
 
 ### Custom Elements
 
-The runtime registers lightweight custom elements that let server-rendered markup opt into scoped behavior without page-local scripts:
+The runtime registers lightweight custom elements that let server-rendered markup opt into scoped behavior without page-local behavior code:
 
 - `htmx-table`: table component root; carries the stable table component id and dispatches table lifecycle events
 - `htmx-request-scope`: nearest request boundary for pending state, indicators, stale regions, and disabled controls
@@ -31,46 +39,48 @@ The runtime registers lightweight custom elements that let server-rendered marku
 
 ## Usage
 
-### Include All Scripts (Default)
+### Include All Behaviors (Default)
 ```html
-<htmx-scripts></htmx-scripts>
+<htmx-runtime></htmx-runtime>
 ```
 
-### Include Specific Scripts Only
+### Include Specific Behaviors Only
 ```html
-<htmx-scripts include="page-state-headers,table-inline-editing"></htmx-scripts>
+<htmx-runtime include-behaviors="page-state-headers,table-inline-editing"></htmx-runtime>
 ```
 
-### Exclude Specific Scripts
+### Exclude Specific Behaviors
 ```html
-<htmx-scripts exclude="authentication-retry"></htmx-scripts>
+<htmx-runtime exclude-behaviors="authentication-retry"></htmx-runtime>
 ```
 
-### Valid Script Names
+### Valid Behavior Names
 - `page-state-headers`
 - `table-inline-editing` 
 - `blur-save-coordination`
 - `request-lifecycle`
 - `error-handling`
 - `authentication-retry`
+- `modal`
 
 ## Benefits
 
 1. **Packaged Delivery**: Behaviors are served from a versioned static web asset
 2. **Unified Management**: Single TagHelper manages all JavaScript inclusion
-3. **Flexible Inclusion**: Choose which scripts to include per page/section
-4. **Maintainability**: Runtime behavior lives in one browser-tested JavaScript module
+3. **Flexible Inclusion**: Choose which behaviors to include per page/section
+4. **Maintainability**: Runtime behavior lives in focused TypeScript modules that build to one browser-tested JavaScript asset
 5. **Performance**: Static assets can be cached independently of server-rendered pages
 
 ## Adding New Behaviors
 
 To add a new JavaScript behavior:
 
-1. Add the behavior installer to `/wwwroot/js/htmx-components.js`
-2. Add the script name to the `allScripts` array in `HtmxScriptsTagHelper.GetScriptsToInclude()`
-3. Add the mapping in `HtmxScriptsTagHelper.MapScriptName()`
+1. Add the behavior installer to `/tools/runtime/src/behaviors`
+2. Register the behavior name and installer in `/tools/runtime/src/behaviors/registry.ts`
+3. Add the behavior name to `HtmxRuntimeTagHelper`
 4. Add unit or browser-smoke coverage for the behavior
-5. Document the new behavior in this file
+5. Run `npm run build:js` and commit the updated `/wwwroot/js/htmx-components.js`
+6. Document the new behavior in this file
 
 ## Architecture Benefits
 
@@ -83,23 +93,23 @@ This system enables:
 
 ## Implementation Details
 
-### HtmxScriptsTagHelper
+### HtmxRuntimeTagHelper
 
-The <xref:Htmx.Components.TagHelpers.HtmxScriptsTagHelper> is the central component that manages JavaScript inclusion:
+The <xref:Htmx.Components.TagHelpers.HtmxRuntimeTagHelper> is the central component that manages runtime behavior inclusion:
 
 ```csharp
-[HtmlTargetElement("htmx-scripts")]
-public class HtmxScriptsTagHelper : TagHelper
+[HtmlTargetElement("htmx-runtime")]
+public class HtmxRuntimeTagHelper : TagHelper
 {
-    // Manages script inclusion logic
-    // Supports include/exclude attributes
+    // Manages behavior inclusion logic
+    // Supports include-behaviors/exclude-behaviors attributes
     // Emits runtime configuration and a versioned static script reference
 }
 ```
 
-### Script Mapping
+### Behavior Registry
 
-Each behavior is installed from the packaged runtime:
+Each behavior is installed from the packaged runtime registry:
 
 | Behavior | Purpose |
 |-------------|---------|
@@ -109,6 +119,7 @@ Each behavior is installed from the packaged runtime:
 | `request-lifecycle` | Pending UI behavior |
 | `error-handling` | Scoped/global HTMX error display |
 | `authentication-retry` | Authentication handling |
+| `modal` | HTMX-loaded modal dialog behavior |
 
 ### Request Lifecycle Contract
 
