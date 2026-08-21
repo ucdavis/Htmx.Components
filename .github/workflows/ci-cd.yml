@@ -1,0 +1,162 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+  NODE_VERSION: 22.x
+  SOLUTION_PATH: Htmx.Components.sln
+  PACKAGE_PROJECT: Htmx.Components.csproj
+  PACKAGE_ID: Htmx.Components
+  NUGET_SOURCE: https://api.nuget.org/v3/index.json
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Restore npm packages
+        run: npm ci
+
+      - name: Restore
+        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+
+      - name: Build
+        run: dotnet build "${{ env.SOLUTION_PATH }}" --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/Htmx.Components.Tests/Htmx.Components.Tests.csproj --configuration Release --no-build
+
+  publish:
+    name: Publish to NuGet
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    concurrency:
+      group: nuget-publish-main
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Restore npm packages
+        run: npm ci
+
+      - name: Restore
+        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+
+      - name: Compute package version
+        id: package-version
+        shell: python
+        run: |
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+          import xml.etree.ElementTree as ET
+
+          package_project = os.environ["PACKAGE_PROJECT"]
+          package_id = os.environ["PACKAGE_ID"]
+
+          version = ET.parse(package_project).findtext("./PropertyGroup/Version")
+          if not version:
+              raise SystemExit(f"No <Version> found in {package_project}")
+
+          match = re.fullmatch(r"(\d+)\.(\d+)(?:\.(\d+))?(?:[-+].*)?", version.strip())
+          if not match:
+              raise SystemExit(f"Project version must start with major.minor[.patch], got: {version}")
+
+          major, minor = match.group(1), match.group(2)
+          prefix = f"{major}.{minor}."
+          published_patches = []
+          index_url = f"https://api.nuget.org/v3-flatcontainer/{package_id.lower()}/index.json"
+
+          try:
+              with urllib.request.urlopen(index_url, timeout=30) as response:
+                  versions = json.load(response).get("versions", [])
+          except urllib.error.HTTPError as ex:
+              if ex.code == 404:
+                  versions = []
+              else:
+                  raise
+
+          for published_version in versions:
+              if not published_version.startswith(prefix):
+                  continue
+
+              patch_part = published_version[len(prefix):]
+              if re.fullmatch(r"\d+", patch_part):
+                  published_patches.append(int(patch_part))
+
+          next_patch = max(published_patches, default=-1) + 1
+          next_version = f"{major}.{minor}.{next_patch}"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={next_version}\n")
+
+          print(f"Package version: {next_version}")
+
+      - name: Build
+        run: >
+          dotnet build "${{ env.SOLUTION_PATH }}"
+          --configuration Release
+          --no-restore
+          /p:Version=${{ steps.package-version.outputs.version }}
+
+      - name: Pack
+        run: >
+          dotnet pack "${{ env.PACKAGE_PROJECT }}"
+          --configuration Release
+          --no-build
+          --output artifacts
+          /p:Version=${{ steps.package-version.outputs.version }}
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: artifacts/*.nupkg
+
+      - name: Publish
+        run: >
+          dotnet nuget push "artifacts/*.nupkg"
+          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --source "${{ env.NUGET_SOURCE }}"
+          --skip-duplicate

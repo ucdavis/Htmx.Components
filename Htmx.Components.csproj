@@ -10,6 +10,7 @@
 
     <!-- NuGet Package Metadata -->
     <PackageId>Htmx.Components</PackageId>
+    <Version>2.1.0</Version>
     <Title>Htmx.Components</Title>
     <PackageDescription>A comprehensive ASP.NET Core library for building interactive web applications with server-side rendering and HTMX integration. Provides ready-to-use components, state management, and built-in authorization with minimal JavaScript.</PackageDescription>
     <PackageTags>htmx;aspnetcore;razor;components;server-side-rendering;interactive;web;mvc;tailwind;daisyui</PackageTags>
