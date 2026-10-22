@@ -276,3 +276,7 @@ Thumbs.db
 content/extracted-css-classes.txt
 content/extracted-css-classes.css
 content/extracted-css-classes.generated.css
+
+# Browser test diagnostics
+/playwright-report/
+/test-results/

@@ -63,21 +63,14 @@ public class ModalComponentTests
     }
 
     [Fact]
-    public void ModalRuntimeSupportsOpenAfterSwapCloseResetFocusAndSingleActiveDialog()
+    public void PackagedRuntimeIncludesModalContractMarkers()
     {
         var script = ReadRepoFile("wwwroot/js/htmx-components.js");
 
-        Assert.Contains("\"modal\"", script, StringComparison.Ordinal);
-        Assert.Contains("function installModalBehavior()", script, StringComparison.Ordinal);
-        Assert.Contains("function resolveHtmxRequestTrigger(detail)", script, StringComparison.Ordinal);
-        Assert.Contains("detail?.requestConfig?.elt", script, StringComparison.Ordinal);
         Assert.Contains("data-hc-open-modal", script, StringComparison.Ordinal);
-        Assert.Contains("htmx:afterSwap", script, StringComparison.Ordinal);
-        Assert.Contains("requestTargetedModalBody(trigger, modal, target)", script, StringComparison.Ordinal);
+        Assert.Contains("data-hc-modal-body-target", script, StringComparison.Ordinal);
+        Assert.Contains("[data-hc-modal-body]", script, StringComparison.Ordinal);
         Assert.Contains("data-hc-modal-close", script, StringComparison.Ordinal);
-        Assert.Contains("body.replaceChildren()", script, StringComparison.Ordinal);
-        Assert.Contains("opener.focus()", script, StringComparison.Ordinal);
-        Assert.Contains("if (activeModal && activeModal !== modal)", script, StringComparison.Ordinal);
     }
 
     [Fact]

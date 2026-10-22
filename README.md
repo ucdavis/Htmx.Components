@@ -18,7 +18,11 @@ A comprehensive ASP.NET Core library for building interactive web applications w
 
 ```csharp
 // Program.cs - Minimal setup
-builder.Services.AddHtmxComponents();
+builder.Services.AddHtmxComponents(options =>
+{
+    options.WithAuthorizationRequirementFactory<PermissionRequirementFactory>();
+    options.WithResourceOperationRegistry<ResourceOperationRegistry>();
+});
 builder.Services.AddControllersWithViews()
     .AddHtmxComponentsApplicationPart();
 
@@ -47,13 +51,19 @@ public class AdminController : Controller
 
 ```html
 <!-- Layout - Components just work -->
+<script src="https://unpkg.com/htmx.org@2.0.8/dist/htmx.min.js"
+        integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
+        crossorigin="anonymous"></script>
+
 @await Component.InvokeAsync("NavBar")
 @await Component.InvokeAsync("AuthStatus")
 @await Component.InvokeAsync("Table", Model)
 
-<htmx-scripts></htmx-scripts> <!-- Packaged runtime behaviors -->
+<htmx-runtime></htmx-runtime> <!-- Packaged runtime behaviors -->
 <htmx-page-state></htmx-page-state> <!-- State management -->
 ```
+
+Load HTMX before `<htmx-runtime>`. The runtime script is deferred. For production, you can self-host the same HTMX 2.0.8 asset instead of using the CDN.
 
 **Result**: Dynamic navigation, interactive tables, auth integration - all with server-side rendering.
 
@@ -71,6 +81,7 @@ public class AdminController : Controller
 - .NET 10.0+
 - ASP.NET Core
 - HTMX 2.0+
+- Tailwind CSS/DaisyUI recommended for the built-in component styles
 
 ## 🤝 Contributing
 

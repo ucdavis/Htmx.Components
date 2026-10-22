@@ -6,16 +6,17 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 
 namespace Htmx.Components.Tests;
 
-public class HtmxScriptsTagHelperTests
+public class HtmxRuntimeTagHelperTests
 {
     [Fact]
     public async Task ProcessAsync_EmitsConfigJsonAndVersionedRuntimeReference()
     {
-        var output = await RenderAsync(new HtmxScriptsTagHelper(new StubFileVersionProvider()));
+        var output = await RenderAsync(new HtmxRuntimeTagHelper(new StubFileVersionProvider()));
         var html = output.Content.GetContent();
 
         Assert.Null(output.TagName);
-        Assert.Contains("""<script type="application/json" id="htmx-components-config">""", html);
+        Assert.Contains("""<script type="application/json" id="htmx-components-runtime-config">""", html);
+        Assert.Contains("\"behaviors\":[", html);
         Assert.Contains("\"/_content/Htmx.Components/js/htmx-components.js?v=test\"", html);
         Assert.Contains("page-state-headers", html);
         Assert.Contains("table-inline-editing", html);
@@ -27,12 +28,12 @@ public class HtmxScriptsTagHelperTests
     }
 
     [Fact]
-    public async Task ProcessAsync_HonorsIncludeAndExcludeConfiguration()
+    public async Task ProcessAsync_HonorsIncludeBehaviorsAndExcludeBehaviorsConfiguration()
     {
-        var output = await RenderAsync(new HtmxScriptsTagHelper(new StubFileVersionProvider())
+        var output = await RenderAsync(new HtmxRuntimeTagHelper(new StubFileVersionProvider())
         {
-            Include = "page-state-headers, table-inline-editing",
-            Exclude = "page-state-headers"
+            IncludeBehaviors = "page-state-headers, table-inline-editing",
+            ExcludeBehaviors = "page-state-headers"
         });
         var html = output.Content.GetContent();
 
@@ -44,7 +45,20 @@ public class HtmxScriptsTagHelperTests
         Assert.DoesNotContain("modal", html);
     }
 
-    private static async Task<TagHelperOutput> RenderAsync(HtmxScriptsTagHelper tagHelper)
+    [Fact]
+    public async Task ProcessAsync_ThrowsForUnknownBehavior()
+    {
+        var tagHelper = new HtmxRuntimeTagHelper(new StubFileVersionProvider())
+        {
+            IncludeBehaviors = "request-lifecycle, typo"
+        };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => RenderAsync(tagHelper));
+
+        Assert.Contains("Unknown Htmx.Components runtime behavior 'typo'", exception.Message);
+    }
+
+    private static async Task<TagHelperOutput> RenderAsync(HtmxRuntimeTagHelper tagHelper)
     {
         tagHelper.ViewContext = new ViewContext
         {
@@ -52,7 +66,7 @@ public class HtmxScriptsTagHelperTests
         };
 
         var output = new TagHelperOutput(
-            "htmx-scripts",
+            "htmx-runtime",
             [],
             (_, _) => Task.FromResult<TagHelperContent>(new DefaultTagHelperContent()));
 

@@ -202,13 +202,6 @@ public IActionResult Reports() => Ok();
 public IActionResult UserManagement() => Ok();
 ```
 
-## Next Steps
-
-- **[Authentication](authentication.md)**: Learn about setting up authentication that works with authorization
-- **[Navigation](navigation.md)**: Understand how navigation integrates with authorization
-- **[Tables](tables.md)**: See how tables respect authorization in CRUD operations
-```
-
 ## Authorization Handlers
 
 ### Custom Authorization Handlers
@@ -440,7 +433,7 @@ builder.Services.AddHtmxComponents(options =>
         
         // Check if user can manage users
         var userManagementReq = permissionFactory.ForOperation("users", "read");
-        var canManageUsers = await authService.AuthorizeAsync(user, userManagementReq);
+        var canManageUsers = await authService.AuthorizeAsync(user, null, userManagementReq);
         
         if (canManageUsers.Succeeded)
         {
@@ -624,3 +617,9 @@ public async Task GetUsers_UnauthorizedUser_ShouldReturnForbidden()
 ```
 
 This comprehensive authorization system provides fine-grained control over access to resources while maintaining flexibility and performance. The system integrates seamlessly with ASP.NET Core's built-in authorization framework while adding powerful resource-operation-based permissions specifically designed for HTMX applications.
+
+## Next Steps
+
+- **[Authentication](authentication.md)**: Learn about setting up authentication that works with authorization
+- **[Navigation](navigation.md)**: Understand how navigation integrates with authorization
+- **[Tables](tables.md)**: See how tables respect authorization in CRUD operations

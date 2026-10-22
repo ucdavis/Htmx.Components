@@ -155,15 +155,8 @@ If running on Windows with Git Bash:
 
 Key configuration options:
 - **metadata.src**: Points to the C# source files (currently `../` from docs directory)
-- **metadata.filter**: Uses `filterConfig.yml` to control which APIs are documented
+- **metadata.disableDefaultFilter**: Uses DocFX's default API filtering behavior
 - **build.content**: Includes both generated API docs and manual articles
 - **build.globalMetadata**: Sets site-wide metadata like repository URL
-
-### Filter Configuration (`filterConfig.yml`)
-
-Controls which APIs appear in the documentation. You can:
-- Exclude internal classes
-- Include/exclude specific namespaces
-- Control visibility of private members
 
 For more information on DocFX configuration, see the [DocFX documentation](https://dotnet.github.io/docfx/).

@@ -8,27 +8,39 @@ This folder demonstrates a self-contained ViewComponent pattern where each compo
 Components/
 ├── AuthStatus/
 │   ├── AuthStatusViewComponent.cs
-│   ├── AuthStatusViewModel.cs
 │   ├── IAuthStatusProvider.cs
 │   ├── DefaultAuthStatusProvider.cs
 │   ├── AuthStatusUpdateAttribute.cs
 │   ├── Internal/
 │   │   └── AuthStatusUpdateFilter.cs    ← Internal infrastructure
+│   ├── Models/
+│   │   └── AuthStatusViewModel.cs
 │   ├── Views/
 │   │   └── Default.cshtml
 │   └── README.md (optional component documentation)
 ├── Table/
 │   ├── TableViewComponent.cs
 │   ├── TableProvider.cs
-│   ├── TableActionAttributes.cs
 │   ├── Internal/
+│   │   ├── TableActionAttributes.cs     ← Internal action attributes
 │   │   ├── TableOobEditFilter.cs        ← Internal infrastructure
 │   │   └── TableOobRefreshFilter.cs     ← Internal infrastructure
+│   ├── Models/
+│   │   ├── TableModel.cs
+│   │   ├── TableColumnModel.cs
+│   │   └── TableState.cs
 │   ├── Views/
 │   │   ├── _Table.cshtml
 │   │   ├── _TableBody.cshtml
 │   │   └── ... (other table partials)
 │   └── README.md
+├── Modal/
+│   ├── ModalViewComponent.cs
+│   ├── Models/
+│   │   ├── ModalModel.cs
+│   │   └── ModalSize.cs
+│   └── Views/
+│       └── Default.cshtml
 └── NavBar/
     ├── NavBarViewComponent.cs
     ├── NavActionAttribute.cs
@@ -54,19 +66,23 @@ Components/
 Self-contained ViewComponents are automatically enabled when you register Htmx.Components:
 
 ```csharp
-builder.Services.AddHtmxComponents();
+builder.Services.AddHtmxComponents(options =>
+{
+    options.WithAuthorizationRequirementFactory<PermissionRequirementFactory>();
+    options.WithResourceOperationRegistry<ResourceOperationRegistry>();
+});
 ```
 
-No additional configuration is needed - the `ComponentViewLocationExpander` is automatically registered.
+No additional view configuration is needed - the `ComponentViewLocationExpander` is automatically registered.
 
 ## Notes
 
 - This pattern maintains full compatibility with daisyUI and Tailwind CSS
-- JavaScript behaviors are delivered through the `htmx-scripts` TagHelper system
+- JavaScript behaviors are delivered through the `htmx-runtime` TagHelper system
 - Views are discovered automatically through the custom view location expander
 - Components remain fully testable and reusable
 - **Component-specific attributes now use component namespaces:**
   - `AuthStatusUpdateAttribute` → `Htmx.Components.AuthStatus`
   - `NavActionAttribute`, `NavActionGroupAttribute` → `Htmx.Components.NavBar`
-  - `TableEditActionAttribute`, `TableRefreshActionAttribute` → `Htmx.Components.Table`
+  - Internal table action attributes and filters → `Htmx.Components.Table.Internal`
   - General attributes like `ModelConfigAttribute` remain in `Htmx.Components.Attributes`

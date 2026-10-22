@@ -255,24 +255,25 @@ This approach ensures that all authorization decisions flow through ASP.NET Core
 
 ### 7. JavaScript Architecture
 
-The framework includes a JavaScript delivery system that enables server-side behavior selection through the <xref:Htmx.Components.TagHelpers.HtmxScriptsTagHelper> while serving the runtime as a packaged static web asset.
+The framework includes a JavaScript delivery system that enables server-side behavior selection through the <xref:Htmx.Components.TagHelpers.HtmxRuntimeTagHelper> while serving the runtime as a packaged static web asset.
 
 #### Key Components
 
-**HtmxScriptsTagHelper**: Central TagHelper that manages JavaScript behavior inclusion:
+**HtmxRuntimeTagHelper**: Central TagHelper that manages JavaScript behavior inclusion:
 ```html
-<htmx-scripts include="page-state-headers,table-inline-editing"></htmx-scripts>
+<htmx-runtime include-behaviors="page-state-headers,table-inline-editing"></htmx-runtime>
 ```
 
-**Script Behaviors**: Modular JavaScript functionality installed from `htmx-components.js`:
+**Runtime Behaviors**: Modular JavaScript functionality installed from `htmx-components.js`:
 - `page-state-headers`: Automatic page state management
 - `table-inline-editing`: Table interaction and editing behaviors
 - `blur-save-coordination`: Form coordination and race condition prevention
 - `request-lifecycle`: Default pending UI behavior
 - `error-handling`: Scoped/global error display
 - `authentication-retry`: Authentication retry handling
+- `modal`: HTMX-loaded modal dialog behavior
 
-**Custom Elements**: Server-rendered components use `htmx-table`, `htmx-request-scope`, and `htmx-error-region` to scope table identity, pending UI, and safe error display without page-specific inline scripts.
+**Custom Elements and Data Contracts**: Server-rendered components use `htmx-table`, `htmx-request-scope`, and `htmx-error-region` to scope table identity, pending UI, and safe error display without page-specific inline behavior code. Modal shells use `data-hc-modal`, `data-hc-modal-body`, and `data-hc-modal-close` attributes for native dialog behavior.
 
 **Benefits:**
 - **Static Asset Delivery**: The runtime is versioned and cacheable

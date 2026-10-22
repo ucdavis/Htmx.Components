@@ -13,8 +13,8 @@
       }
     };
   </script>
-  <script type="application/json" id="htmx-components-config">
-    { "Scripts": [ "request-lifecycle", "error-handling", "authentication-retry" ] }
+  <script type="application/json" id="htmx-components-runtime-config">
+    { "behaviors": [ "request-lifecycle", "error-handling", "authentication-retry" ] }
   </script>
   <script src="/wwwroot/js/htmx-components.js?v=request-lifecycle-smoke" defer></script>
 </head>
@@ -40,6 +40,7 @@
     const results = [];
     const authClicks = { one: 0, two: 0 };
     const popups = [];
+    const popupWindows = [];
     let pendingLinkClicks = 0;
 
     document.getElementById("auth-one").addEventListener("click", function () {
@@ -56,7 +57,12 @@
 
     window.open = function (url, name, features) {
       popups.push({ url, name, features });
-      return { closed: false };
+      // MessageEvent.source must be a real Window, even in this isolated smoke fixture.
+      const frame = document.createElement("iframe");
+      frame.hidden = true;
+      document.body.append(frame);
+      popupWindows.push(frame.contentWindow);
+      return frame.contentWindow;
     };
 
     function assert(condition, message) {
@@ -181,7 +187,7 @@
       assert(popups.length === 1, "auth retry opened more than one popup");
       assert(popups[0].url === "/auth/popup-login", "auth retry used the wrong popup URL");
 
-      window.dispatchEvent(new MessageEvent("message", { data: "login-success" }));
+      window.dispatchEvent(new MessageEvent("message", { data: "login-success", origin: window.location.origin, source: popupWindows[0] }));
       await new Promise(function (resolve) {
         window.setTimeout(resolve, 0);
       });
