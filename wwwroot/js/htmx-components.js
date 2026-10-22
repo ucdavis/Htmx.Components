@@ -36,7 +36,7 @@
       authRetryRequestContexts.set(xhr, {
         elt: detail.elt,
         eventType: triggeringEvent.type,
-        eventClass: triggeringEvent.constructor.name,
+        eventClass: getReplayEventClass(triggeringEvent),
         eventInit: getEventInit(triggeringEvent)
       });
     });
@@ -156,6 +156,18 @@
       };
     }
     return base;
+  }
+  function getReplayEventClass(event) {
+    if (event instanceof MouseEvent) {
+      return "MouseEvent";
+    }
+    if (event instanceof KeyboardEvent) {
+      return "KeyboardEvent";
+    }
+    if (event instanceof CustomEvent) {
+      return "CustomEvent";
+    }
+    return "Event";
   }
   function getReplayEventFactory(eventClass) {
     switch (eventClass) {

@@ -86,7 +86,35 @@ for (const outcome of ['closed', 'timeout']) {
   });
 }
 
-for (const eventClass of ['MouseEvent', 'KeyboardEvent', 'CustomEvent', 'unsupported']) {
+test('authentication replay preserves a real Shift-click through its trigger filter', async ({ page }) => {
+  await boot(page);
+  const requests = await challenge(page);
+  await page.locator('#request').evaluate(element => {
+    element.setAttribute('hx-trigger', 'click[shiftKey]');
+    htmx.process(element);
+    window.replayedClicks = [];
+    element.addEventListener('click', event => window.replayedClicks.push({
+      name: event.constructor.name, shiftKey: event.shiftKey, isTrusted: event.isTrusted,
+    }));
+  });
+  const popupEvent = page.waitForEvent('popup');
+  await page.locator('#request').click({ modifiers: ['Shift'] });
+  const popup = await popupEvent;
+  await popup.waitForLoadState();
+  expect(await page.evaluate(() => window.replayedClicks)).toEqual([
+    { name: 'PointerEvent', shiftKey: true, isTrusted: true },
+  ]);
+  expect(requests()).toBe(1);
+  await popup.evaluate(() => window.opener.postMessage('login-success', location.origin));
+  await expect(page.locator('#authenticated')).toHaveText('Authenticated');
+  expect(requests()).toBe(2);
+  expect(await page.evaluate(() => window.replayedClicks)).toEqual([
+    { name: 'PointerEvent', shiftKey: true, isTrusted: true },
+    { name: 'MouseEvent', shiftKey: true, isTrusted: false },
+  ]);
+});
+
+for (const eventClass of ['MouseEvent', 'PointerEvent', 'WheelEvent', 'KeyboardEvent', 'CustomEvent', 'unsupported']) {
   test(`authentication replay preserves supported event data: ${eventClass}`, async ({ page }) => {
     await boot(page);
     const requests = await challenge(page);
@@ -96,14 +124,19 @@ for (const eventClass of ['MouseEvent', 'KeyboardEvent', 'CustomEvent', 'unsuppo
       window.replayedEvents = [];
       element.addEventListener('retry', event => window.replayedEvents.push({
         name: event.constructor.name, detail: event.detail, key: event.key, ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey, clientX: event.clientX, clientY: event.clientY,
+        screenX: event.screenX, screenY: event.screenY,
       }));
     });
     const popupEvent = page.waitForEvent('popup');
     await page.locator('#request').evaluate((element, name) => {
       // Its constructor name resolves to a non-constructor global in the old implementation.
       class location extends Event { constructor() { super('retry', { bubbles: true }); } }
+      const mouseInit = { bubbles: true, ctrlKey: true, shiftKey: true, clientX: 12, clientY: 34, screenX: 56, screenY: 78 };
       const event = name === 'unsupported' ? new location()
-        : name === 'MouseEvent' ? new MouseEvent('retry', { bubbles: true, ctrlKey: true })
+        : name === 'MouseEvent' ? new MouseEvent('retry', mouseInit)
+        : name === 'PointerEvent' ? new PointerEvent('retry', mouseInit)
+        : name === 'WheelEvent' ? new WheelEvent('retry', mouseInit)
         : name === 'KeyboardEvent' ? new KeyboardEvent('retry', { bubbles: true, key: 'Enter' })
         : new CustomEvent('retry', { bubbles: true, detail: { token: 42 } });
       element.dispatchEvent(event);
@@ -114,8 +147,9 @@ for (const eventClass of ['MouseEvent', 'KeyboardEvent', 'CustomEvent', 'unsuppo
     await expect(page.locator('#authenticated')).toHaveText('Authenticated');
     expect(requests()).toBe(2);
     const replay = await page.evaluate(() => window.replayedEvents[1]);
-    expect(replay.name).toBe(eventClass === 'unsupported' ? 'Event' : eventClass);
-    if (eventClass === 'MouseEvent') expect(replay.ctrlKey).toBe(true);
+    const mouseEvent = ['MouseEvent', 'PointerEvent', 'WheelEvent'].includes(eventClass);
+    expect(replay.name).toBe(mouseEvent ? 'MouseEvent' : eventClass === 'unsupported' ? 'Event' : eventClass);
+    if (mouseEvent) expect(replay).toMatchObject({ ctrlKey: true, shiftKey: true, clientX: 12, clientY: 34, screenX: 56, screenY: 78 });
     if (eventClass === 'KeyboardEvent') expect(replay.key).toBe('Enter');
     if (eventClass === 'CustomEvent') expect(replay.detail).toEqual({ token: 42 });
   });

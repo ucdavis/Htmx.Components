@@ -4,10 +4,11 @@ import { reportFailure } from "../failures";
 interface AuthRetryRequestContext {
   elt?: unknown;
   eventType: string;
-  eventClass: string;
+  eventClass: ReplayEventClass;
   eventInit: ReplayEventInit;
 }
 
+type ReplayEventClass = "MouseEvent" | "KeyboardEvent" | "CustomEvent" | "Event";
 type ReplayEventInit = EventInit | MouseEventInit | KeyboardEventInit | CustomEventInit<unknown>;
 type ReplayEventFactory = (type: string, eventInitDict?: ReplayEventInit) => Event;
 
@@ -32,7 +33,7 @@ export function installAuthenticationRetry(): void {
     authRetryRequestContexts.set(xhr, {
       elt: detail.elt,
       eventType: triggeringEvent.type,
-      eventClass: triggeringEvent.constructor.name,
+      eventClass: getReplayEventClass(triggeringEvent),
       eventInit: getEventInit(triggeringEvent),
     });
   });
@@ -178,7 +179,20 @@ function getEventInit(event: Event): ReplayEventInit {
   return base;
 }
 
-function getReplayEventFactory(eventClass: string): ReplayEventFactory {
+function getReplayEventClass(event: Event): ReplayEventClass {
+  if (event instanceof MouseEvent) {
+    return "MouseEvent";
+  }
+  if (event instanceof KeyboardEvent) {
+    return "KeyboardEvent";
+  }
+  if (event instanceof CustomEvent) {
+    return "CustomEvent";
+  }
+  return "Event";
+}
+
+function getReplayEventFactory(eventClass: ReplayEventClass): ReplayEventFactory {
   switch (eventClass) {
     case "MouseEvent": return (type, init) => new MouseEvent(type, init as MouseEventInit);
     case "KeyboardEvent": return (type, init) => new KeyboardEvent(type, init as KeyboardEventInit);
