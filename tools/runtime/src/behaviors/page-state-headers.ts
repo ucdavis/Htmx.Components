@@ -8,7 +8,7 @@ export function installPageStateHeaders(): void {
       return;
     }
 
-    const detail = getHtmxDetail(event) as { headers?: Record<string, string> };
+    const detail = getHtmxDetail(event);
     if (!detail.headers) {
       return;
     }

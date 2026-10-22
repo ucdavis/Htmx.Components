@@ -88,12 +88,16 @@ Create `Views/Auth/PopupLogin.cshtml`:
 <body>
     <script>
         // Notify the opener window and close the popup
-        window.opener?.postMessage('login-success', '*');
+        window.opener?.postMessage('login-success', window.location.origin);
         window.close();
     </script>
 </body>
 </html>
 ```
+
+The popup completion page must return to the origin of the configured popup-login URL before posting `login-success`. The runtime validates both that origin and the popup window before replaying the request. Identity-provider redirects can use another origin during sign-in; the final completion page must return to the configured origin. For the same-origin example above, use `window.location.origin` as the message target.
+
+Blocked, closed, or timed-out popups show a sign-in error in the request's error region (or the global region). A subsequent action can start another attempt. If `error-handling` is excluded, failures are logged to the console instead.
 
 ## AuthStatus Component
 

@@ -1,5 +1,5 @@
 import { getHtmxDetail, HtmxEventDetail } from "../htmx-events";
-import { resolveElementSelector, resolveElementSelectorAll } from "../selectors";
+import { querySelectorAll, resolveElementSelector, resolveElementSelectorAll } from "../selectors";
 
 interface PendingState {
   releases: Array<() => void>;
@@ -42,24 +42,34 @@ function startPendingState(event: Event): void {
   const scope = resolveRequestScope(trigger, detail);
   const state: PendingState = { releases: [] };
 
-  if (scope) {
-    retainPendingReference(state, scope, "scope", function () {
-      const previousBusy = scope.getAttribute("aria-busy");
-      scope.classList.add("hc-request-pending");
-      scope.setAttribute("aria-busy", "true");
-      return { previousBusy };
-    }, function (previous) {
-      scope.classList.remove("hc-request-pending");
-      restoreNullableAttribute(scope, "aria-busy", previous.previousBusy);
+  try {
+    if (scope) {
+      retainPendingReference(state, scope, "scope", function () {
+        const previousBusy = scope.getAttribute("aria-busy");
+        scope.classList.add("hc-request-pending");
+        scope.setAttribute("aria-busy", "true");
+        return { previousBusy };
+      }, function (previous) {
+        scope.classList.remove("hc-request-pending");
+        restoreNullableAttribute(scope, "aria-busy", previous.previousBusy);
+      });
+    }
+
+    const disableMode = getPendingOption(trigger, scope, "pendingDisable", "trigger");
+    disablePendingElements(state, trigger, scope, disableMode);
+    dimStaleRegions(state, trigger, scope, detail);
+    showPendingIndicators(state, trigger, scope);
+    pendingRequestStates.set(requestKey, state);
+    // A later beforeRequest listener may cancel after our UI has been applied.
+    queueMicrotask(() => {
+      if (event.defaultPrevented) {
+        restorePendingState(event);
+      }
     });
+  } catch (error) {
+    releasePendingState(state);
+    throw error;
   }
-
-  const disableMode = getPendingOption(trigger, scope, "pendingDisable", "trigger");
-  disablePendingElements(state, trigger, scope, disableMode);
-  dimStaleRegions(state, trigger, scope, detail);
-  showPendingIndicators(state, trigger, scope);
-
-  pendingRequestStates.set(requestKey, state);
 }
 
 function restorePendingState(event: Event): void {
@@ -76,6 +86,10 @@ function restorePendingState(event: Event): void {
 
   pendingRequestStates.delete(requestKey);
 
+  releasePendingState(state);
+}
+
+function releasePendingState(state: PendingState): void {
   for (let index = state.releases.length - 1; index >= 0; index -= 1) {
     state.releases[index]();
   }
@@ -112,7 +126,7 @@ function disablePendingElements(
   if (disableMode === "scope" && scope) {
     const disableSelector = getPendingOption(trigger, scope, "pendingDisableSelector", null)
       || "button, input, select, textarea, a[href], [tabindex]";
-    const elements = Array.from(scope.querySelectorAll(disableSelector))
+    const elements = querySelectorAll(scope, disableSelector)
       .filter(function (element) {
         return element !== scope && !element.hasAttribute("data-hc-no-pending-disable");
       });

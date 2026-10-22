@@ -1,3 +1,4 @@
+import { collectMatches } from "../selectors";
 import { getHtmxDetail } from "../htmx-events";
 
 export function installTableInlineEditing(): void {
@@ -23,23 +24,7 @@ export function installTableInlineEditing(): void {
 }
 
 export function syncTables(root: Element | Document): void {
-  const tables: Element[] = [];
-  const closestTable = root instanceof Element
-    ? root.closest("[data-hc-table-component]")
-    : null;
-
-  if (closestTable) {
-    tables.push(closestTable);
-  }
-
-  if (root instanceof Element && root.matches("[data-hc-table-component]") && root !== closestTable) {
-    tables.push(root);
-  }
-
-  tables.push(...Array.from(root.querySelectorAll("[data-hc-table-component]"))
-    .filter((table) => !tables.includes(table)));
-
-  tables.forEach(syncTableEditing);
+  collectMatches(root, "[data-hc-table-component]").forEach(syncTableEditing);
 }
 
 export function syncTableEditing(table: Element): void {

@@ -1,3 +1,4 @@
+import { collectMatches, querySelector } from "../selectors";
 import { getHtmxDetail, HtmxEventDetail } from "../htmx-events";
 
 interface ModalElement extends HTMLElement {
@@ -11,26 +12,17 @@ interface ModalElement extends HTMLElement {
 let activeModal: ModalElement | null = null;
 
 export function syncModals(root: Element | Document): void {
-  const modals: Element[] = [];
-  const closestModal = root instanceof Element
-    ? root.closest("[data-hc-modal]")
-    : null;
-
-  if (closestModal) {
-    modals.push(closestModal);
-  }
-
-  if (root instanceof Element && root.matches("[data-hc-modal]") && root !== closestModal) {
-    modals.push(root);
-  }
-
-  modals.push(...Array.from(root.querySelectorAll("[data-hc-modal]"))
-    .filter((modal) => !modals.includes(modal)));
-
-  modals.forEach((modal) => prepareModal(asModal(modal)));
+  collectMatches(root, "[data-hc-modal]").forEach((modal) => prepareModal(asModal(modal)));
 }
 
 export function installModalBehavior(): void {
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && activeModal && typeof activeModal.showModal !== "function") {
+      event.preventDefault();
+      closeModal(activeModal);
+    }
+  });
+
   document.addEventListener("click", function (event) {
     const closeTrigger = event.target instanceof Element
       ? event.target.closest("[data-hc-modal-close]")
@@ -95,7 +87,7 @@ function requestTargetedModalBody(trigger: Element, modal: Element, target: Elem
   const configuredTarget = modal.getAttribute("data-hc-modal-body-target");
   const targetSelector = trigger.getAttribute("hx-target") || trigger.getAttribute("data-hx-target");
   const body = configuredTarget
-    ? document.querySelector(configuredTarget)
+    ? querySelector(document, configuredTarget)
     : modal.querySelector("[data-hc-modal-body]");
 
   if (!body || target !== body) {
@@ -141,7 +133,7 @@ function closeModal(modal: ModalElement, options?: { restoreFocus?: boolean }): 
 function handleModalClosed(modal: ModalElement): void {
   const bodySelector = modal.getAttribute("data-hc-modal-body-target");
   const body = bodySelector
-    ? document.querySelector(bodySelector)
+    ? querySelector(document, bodySelector)
     : modal.querySelector("[data-hc-modal-body]");
 
   if (body) {

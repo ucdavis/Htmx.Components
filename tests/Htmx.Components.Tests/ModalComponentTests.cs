@@ -63,19 +63,14 @@ public class ModalComponentTests
     }
 
     [Fact]
-    public void ModalRuntimePreservesPublicModalContract()
+    public void PackagedRuntimeIncludesModalContractMarkers()
     {
         var script = ReadRepoFile("wwwroot/js/htmx-components.js");
 
-        Assert.Contains("\"modal\"", script, StringComparison.Ordinal);
         Assert.Contains("data-hc-open-modal", script, StringComparison.Ordinal);
-        Assert.Contains("htmx:afterSwap", script, StringComparison.Ordinal);
         Assert.Contains("data-hc-modal-body-target", script, StringComparison.Ordinal);
         Assert.Contains("[data-hc-modal-body]", script, StringComparison.Ordinal);
         Assert.Contains("data-hc-modal-close", script, StringComparison.Ordinal);
-        Assert.Contains("replaceChildren", script, StringComparison.Ordinal);
-        Assert.Contains("focus()", script, StringComparison.Ordinal);
-        Assert.Contains("window.HtmxComponents", script, StringComparison.Ordinal);
     }
 
     [Fact]

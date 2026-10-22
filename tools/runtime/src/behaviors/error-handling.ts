@@ -1,4 +1,5 @@
 import { getHtmxDetail, HtmxEventDetail } from "../htmx-events";
+import { setFailureReporter } from "../failures";
 
 interface StatusError {
   title: string;
@@ -12,7 +13,7 @@ interface ErrorRegionElement extends Element {
 }
 
 export function installErrorHandling(): void {
-  ensureGlobalErrorRegion();
+  setFailureReporter((detail, title, message) => showErrorFragment(detail, createErrorFragment(title, message)));
 
   document.addEventListener("htmx:beforeRequest", clearRequestError);
   document.addEventListener("htmx:responseError", showResponseError);
@@ -96,10 +97,23 @@ function parseErrorFragment(responseText: string | undefined): Node | null {
     return null;
   }
 
-  return source.cloneNode(true);
+  const title = source.querySelector("[data-hc-error-title]");
+  const message = source.querySelector("[data-hc-error-message]");
+  if (!title?.textContent?.trim() || !message?.textContent?.trim()) {
+    return null;
+  }
+
+  const safeFragment = createErrorFragment(title.textContent, message.textContent);
+  for (const name of ["data-hc-error-kind", "data-hc-component-id"]) {
+    const value = source.getAttribute(name);
+    if (value !== null) {
+      safeFragment.setAttribute(name, value);
+    }
+  }
+  return safeFragment;
 }
 
-function createErrorFragment(title: string, message: string): Node {
+function createErrorFragment(title: string, message: string): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.dataset.hcErrorFragment = "";
 

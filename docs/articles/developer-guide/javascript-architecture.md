@@ -63,6 +63,20 @@ The runtime registers lightweight custom elements that let server-rendered marku
 - `authentication-retry`
 - `modal`
 
+## Loading and failure behavior
+
+Load HTMX before the runtime. Body-dependent behavior installation waits for DOM readiness, and automatic startup emits one `htmx-components:load` event. Explicit `HtmxComponents.init(root)` calls still synchronize the requested root and emit an event, as do subsequent HTMX content loads. Repeated bundle references do not install duplicate listeners. A missing HTMX dependency produces a warning; reverse script order is not supported.
+
+Blur-triggered field updates finish before a deferred save is replayed. If they remain pending after roughly one second, the save stops and displays an error; the user can retry after the updates finish. Disconnected save elements are discarded.
+
+Structured server errors use the text from `data-hc-error-title` and `data-hc-error-message`, preserving only error-kind and component-ID metadata. Rich response HTML is not inserted into the error region. Page state remains one shared encrypted field containing component partitions.
+
+## Browser tests
+
+Run `npm ci`, `npx playwright install chromium`, `npm run build:js`, and `npm run test:browser`. The automated suite serves local fixtures and HTMX 2.0.8 without CDN access. It covers startup, blur/save ordering, authentication, errors, pending UI, page state, and modals. CI runs the same suite with Chromium and uploads traces/screenshots on failure.
+
+The manual request-lifecycle smoke fixture remains available at `/smoke` when running `node tests/browser/server.mjs` (port 4173).
+
 ## Benefits
 
 1. **Packaged Delivery**: Behaviors are served from a versioned static web asset

@@ -1,113 +1,90 @@
-import { getHtmxDetail, HtmxRequestConfig } from "../htmx-events";
+import { getHtmxDetail, HtmxEventDetail, HtmxRequestConfig } from "../htmx-events";
+import { reportFailure } from "../failures";
 
-const pendingBlurRequests = new Set<Element>();
-
-interface DeferredRequest {
-  element: Element;
-  eventType?: string;
-}
+const pendingBlurRequests = new Set<object>();
+const deferredSaves = new Map<Element, number>();
 
 export function installBlurSaveCoordination(): void {
-  document.addEventListener("htmx:beforeRequest", function (event) {
+  document.addEventListener("htmx:beforeSend", function (event) {
     const detail = getHtmxDetail(event);
-    const element = detail.elt;
-    const requestConfig = detail.requestConfig;
+    if (detail.elt instanceof Element && detail.requestConfig && detail.xhr
+      && isBlurRequest(detail.elt, detail.requestConfig)) {
+      pendingBlurRequests.add(detail.xhr);
+    }
+  });
 
-    if (!(element instanceof Element) || !requestConfig) {
+  document.addEventListener("htmx:beforeRequest", function (event) {
+    if (event.defaultPrevented) {
       return;
     }
-
-    if (isBlurRequest(element, requestConfig)) {
-      pendingBlurRequests.add(element);
-    }
-
-    if (!isSaveRequest(requestConfig)) {
+    const detail = getHtmxDetail(event);
+    const element = detail.elt;
+    const config = detail.requestConfig;
+    if (!(element instanceof Element) || !config || isBlurRequest(element, config) || !isSaveRequest(config)) {
       return;
     }
 
     const focusedInput = document.querySelector("input:focus, select:focus, textarea:focus");
-    const hasPendingBlur = pendingBlurRequests.size > 0;
-
-    if (!focusedInput && !hasPendingBlur) {
+    if (!focusedInput && pendingBlurRequests.size === 0 && !deferredSaves.has(element)) {
       return;
     }
-
     event.preventDefault();
-
+    if (deferredSaves.has(element)) {
+      return;
+    }
     if (focusedInput instanceof HTMLElement) {
       focusedInput.blur();
     }
-
-    retryAfterBlur({
-      element,
-      eventType: requestConfig.triggeringEvent?.type,
-    });
+    deferSave(element, config.triggeringEvent?.type, detail);
   });
 
-  document.addEventListener("htmx:afterRequest", cleanupBlurRequest);
-  document.addEventListener("htmx:responseError", cleanupBlurRequest);
+  for (const name of ["htmx:afterRequest", "htmx:responseError", "htmx:sendError", "htmx:timeout", "htmx:sendAbort"]) {
+    document.addEventListener(name, function (event) {
+      const xhr = getHtmxDetail(event).xhr;
+      if (xhr) {
+        pendingBlurRequests.delete(xhr);
+      }
+    });
+  }
 }
 
-function retryAfterBlur(request: DeferredRequest): void {
-  const maxRetries = 40;
-  let retryCount = 0;
-  const element = request.element;
-  const eventType = request.eventType || (element instanceof HTMLFormElement ? "submit" : "click");
-
-  const retry = function () {
+function deferSave(element: Element, eventType: string | undefined, detail: HtmxEventDetail): void {
+  const deadline = Date.now() + 1000;
+  function retry(): void {
+    deferredSaves.delete(element);
+    if (!element.isConnected) {
+      return;
+    }
     if (pendingBlurRequests.size === 0) {
-      replayDeferredRequest(element, eventType);
+      window.htmx?.trigger(element, element instanceof HTMLFormElement ? "submit" : eventType || "click");
       return;
     }
-
-    if (retryCount < maxRetries) {
-      retryCount += 1;
-      window.setTimeout(retry, 25);
+    if (Date.now() >= deadline) {
+      reportFailure(detail, "Save not completed", "Field updates are still pending. Wait for them to finish, then save again.");
       return;
     }
-
-    console.warn("Blur-Save coordination timed out waiting for blur requests to complete.");
-    replayDeferredRequest(element, eventType);
-  };
-
-  window.setTimeout(retry, 25);
-}
-
-function replayDeferredRequest(element: Element, eventType: string): void {
-  if (!element.isConnected) {
-    return;
+    deferredSaves.set(element, window.setTimeout(retry, 25));
   }
-
-  window.htmx?.trigger(element, element instanceof HTMLFormElement ? "submit" : eventType);
+  deferredSaves.set(element, window.setTimeout(retry, 25));
 }
 
-function cleanupBlurRequest(event: Event): void {
-  const detail = getHtmxDetail(event);
-  const element = detail.elt;
-  const requestConfig = detail.requestConfig;
-
-  if (element instanceof Element && requestConfig && isBlurRequest(element, requestConfig)) {
-    pendingBlurRequests.delete(element);
+function actionName(config: HtmxRequestConfig): string {
+  if (!config.path) {
+    return "";
+  }
+  try {
+    return new URL(config.path, window.location.href).pathname.split("/").filter(Boolean).pop() || "";
+  } catch {
+    return "";
   }
 }
 
-function isBlurRequest(element: Element, requestConfig: HtmxRequestConfig): boolean {
-  return element.hasAttribute("hx-trigger")
-    && (element.getAttribute("hx-trigger") || "").includes("blur")
-    && !!requestConfig.path
-    && (
-      requestConfig.path.includes("/SetValue")
-      || requestConfig.path.includes("/UpdateField")
-      || requestConfig.path.includes("/ValueChanged")
-    );
+function isBlurRequest(element: Element, config: HtmxRequestConfig): boolean {
+  const trigger = element.getAttribute("hx-trigger") || element.getAttribute("data-hx-trigger") || "";
+  return /(?:^|[,\s])blur(?:$|[,\s\[])/.test(trigger)
+    && ["SetValue", "UpdateField", "ValueChanged"].includes(actionName(config));
 }
 
-function isSaveRequest(requestConfig: HtmxRequestConfig): boolean {
-  return !!requestConfig.path
-    && (
-      requestConfig.path.includes("/Save")
-      || requestConfig.path.includes("/Submit")
-      || requestConfig.path.includes("/Update")
-      || requestConfig.path.includes("/Create")
-    );
+function isSaveRequest(config: HtmxRequestConfig): boolean {
+  return ["Save", "Submit", "Update", "Create"].includes(actionName(config));
 }

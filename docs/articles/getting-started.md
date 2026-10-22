@@ -118,7 +118,9 @@ Include HTMX in your layout file (`_Layout.cshtml`):
 <head>
     <title>My App</title>
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2/dist/htmx.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.8/dist/htmx.min.js"
+        integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
+        crossorigin="anonymous"></script>
     <!-- Recommended: Include your Tailwind CSS build with DaisyUI and Htmx.Components classes -->
 </head>
 <body>
@@ -140,6 +142,8 @@ Include HTMX in your layout file (`_Layout.cshtml`):
 </body>
 </html>
 ```
+
+Load HTMX before `<htmx-runtime>`; the generated runtime script uses `defer`. For production, you can self-host the same HTMX 2.0.8 asset. Keep one `<htmx-page-state>` per page: its encrypted value contains the partitions for all components.
 
 ## Your First Table
 

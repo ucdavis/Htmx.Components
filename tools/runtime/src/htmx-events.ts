@@ -5,6 +5,7 @@ export interface HtmxRequestConfig {
 }
 
 export interface HtmxEventDetail {
+  headers?: Record<string, string>;
   elt?: unknown;
   requestConfig?: HtmxRequestConfig;
   target?: unknown;

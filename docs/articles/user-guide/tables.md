@@ -489,7 +489,7 @@ Implement complex filtering scenarios:
 public async Task<IActionResult> FilterByCategory(string category)
 {
     var componentId = TableComponentIdentity.Ensure("catalog-products");
-    var modelHandler = await _modelHandlerFactory.Get<Product, int>("products", ModelUI.Table);
+    var modelHandler = await _modelHandlerFactory.Get<Product, int>(nameof(Product), ModelUI.Table);
     var tableState = this.GetPageState().GetOrCreate<TableState>(
         TableComponentIdentity.TableStatePartition(componentId),
         TableStateKeys.TableState,
@@ -533,7 +533,7 @@ private async Task<TableModel<Product, int>> GetProductsPage(int page, int pageS
         .ToListAsync();
         
     // Use the async builder for consistency
-    var handler = await _modelHandlerFactory.Get<Product, int>("products", ModelUI.Table);
+    var handler = await _modelHandlerFactory.Get<Product, int>(nameof(Product), ModelUI.Table);
     var tableModel = await handler.BuildTableModelAsync();
     return tableModel;
 }

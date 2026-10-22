@@ -1,6 +1,6 @@
 declare global {
   interface HtmxExtension {
-    isInlineSwap?: () => boolean;
+    isInlineSwap?: (swapStyle: string) => boolean;
   }
 
   interface HtmxRuntime {

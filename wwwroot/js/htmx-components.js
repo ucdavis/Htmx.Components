@@ -5,6 +5,19 @@
     return event instanceof CustomEvent && typeof event.detail === "object" && event.detail !== null ? event.detail : {};
   }
 
+  // tools/runtime/src/failures.ts
+  var container = window;
+  function setFailureReporter(value) {
+    container.__htmxComponentsFailureReporter = value;
+  }
+  function reportFailure(detail, title, message) {
+    if (container.__htmxComponentsFailureReporter) {
+      container.__htmxComponentsFailureReporter(detail, title, message);
+    } else {
+      console.warn(`${title}: ${message}`);
+    }
+  }
+
   // tools/runtime/src/behaviors/authentication-retry.ts
   var authRetryRequestContexts = /* @__PURE__ */ new WeakMap();
   var authRetryInProgress = false;
@@ -42,13 +55,18 @@
       authRetryInProgress = true;
       try {
         const loginUrl = failureHeader.substring("popup-login:".length);
+        const loginOrigin = new URL(loginUrl, window.location.href).origin;
         const popup = window.open(loginUrl, "authPopup", "width=600,height=700");
-        const loginSuccess = await new Promise(function(resolve) {
+        if (!popup) {
+          reportFailure(detail, "Sign in required", "The sign-in popup was blocked. Allow popups for this site and try again.");
+          return;
+        }
+        const loginResult = await new Promise(function(resolve) {
           let completed = false;
           const timeoutMs = 3e4;
           let closeTimer = 0;
           let timeoutTimer = 0;
-          function finish(success) {
+          function finish(result) {
             if (completed) {
               return;
             }
@@ -56,28 +74,34 @@
             window.removeEventListener("message", listener);
             window.clearInterval(closeTimer);
             window.clearTimeout(timeoutTimer);
-            resolve(success);
+            resolve(result);
           }
           function listener(messageEvent) {
-            if (messageEvent.data === "login-success") {
-              finish(true);
+            if (messageEvent.data === "login-success" && messageEvent.origin === loginOrigin && messageEvent.source === popup) {
+              finish("success");
             }
           }
           closeTimer = window.setInterval(function() {
-            if (popup?.closed) {
-              finish(false);
+            if (popup.closed) {
+              finish("closed");
             }
           }, 250);
           timeoutTimer = window.setTimeout(function() {
-            finish(false);
+            finish("timeout");
           }, timeoutMs);
           window.addEventListener("message", listener);
         });
-        if (loginSuccess && requestContext?.elt instanceof Element && requestContext.elt.isConnected) {
-          const { elt, eventType, eventClass, eventInit } = requestContext;
-          const EventCtor = getEventConstructor(eventClass);
-          elt.dispatchEvent(new EventCtor(eventType, eventInit));
+        if (loginResult !== "success") {
+          reportFailure(detail, "Sign in required", loginResult === "closed" ? "The sign-in popup was closed. Please try again." : "Sign-in timed out. Please try again.");
+          return;
         }
+        if (requestContext?.elt instanceof Element && requestContext.elt.isConnected) {
+          const { elt, eventType, eventClass, eventInit } = requestContext;
+          const createEvent = getReplayEventFactory(eventClass);
+          elt.dispatchEvent(createEvent(eventType, eventInit));
+        }
+      } catch {
+        reportFailure(detail, "Sign in required", "Sign-in could not be completed. Please try again.");
       } finally {
         authRetryInProgress = false;
       }
@@ -133,88 +157,101 @@
     }
     return base;
   }
-  function getEventConstructor(eventClass) {
-    const constructors = window;
-    return constructors[eventClass] || Event;
+  function getReplayEventFactory(eventClass) {
+    switch (eventClass) {
+      case "MouseEvent":
+        return (type, init2) => new MouseEvent(type, init2);
+      case "KeyboardEvent":
+        return (type, init2) => new KeyboardEvent(type, init2);
+      case "CustomEvent":
+        return (type, init2) => new CustomEvent(type, init2);
+      default:
+        return (type, init2) => new Event(type, init2);
+    }
   }
 
   // tools/runtime/src/behaviors/blur-save-coordination.ts
   var pendingBlurRequests = /* @__PURE__ */ new Set();
+  var deferredSaves = /* @__PURE__ */ new Map();
   function installBlurSaveCoordination() {
-    document.addEventListener("htmx:beforeRequest", function(event) {
+    document.addEventListener("htmx:beforeSend", function(event) {
       const detail = getHtmxDetail(event);
-      const element = detail.elt;
-      const requestConfig = detail.requestConfig;
-      if (!(element instanceof Element) || !requestConfig) {
+      if (detail.elt instanceof Element && detail.requestConfig && detail.xhr && isBlurRequest(detail.elt, detail.requestConfig)) {
+        pendingBlurRequests.add(detail.xhr);
+      }
+    });
+    document.addEventListener("htmx:beforeRequest", function(event) {
+      if (event.defaultPrevented) {
         return;
       }
-      if (isBlurRequest(element, requestConfig)) {
-        pendingBlurRequests.add(element);
-      }
-      if (!isSaveRequest(requestConfig)) {
+      const detail = getHtmxDetail(event);
+      const element = detail.elt;
+      const config = detail.requestConfig;
+      if (!(element instanceof Element) || !config || isBlurRequest(element, config) || !isSaveRequest(config)) {
         return;
       }
       const focusedInput = document.querySelector("input:focus, select:focus, textarea:focus");
-      const hasPendingBlur = pendingBlurRequests.size > 0;
-      if (!focusedInput && !hasPendingBlur) {
+      if (!focusedInput && pendingBlurRequests.size === 0 && !deferredSaves.has(element)) {
         return;
       }
       event.preventDefault();
+      if (deferredSaves.has(element)) {
+        return;
+      }
       if (focusedInput instanceof HTMLElement) {
         focusedInput.blur();
       }
-      retryAfterBlur({
-        element,
-        eventType: requestConfig.triggeringEvent?.type
-      });
+      deferSave(element, config.triggeringEvent?.type, detail);
     });
-    document.addEventListener("htmx:afterRequest", cleanupBlurRequest);
-    document.addEventListener("htmx:responseError", cleanupBlurRequest);
+    for (const name of ["htmx:afterRequest", "htmx:responseError", "htmx:sendError", "htmx:timeout", "htmx:sendAbort"]) {
+      document.addEventListener(name, function(event) {
+        const xhr = getHtmxDetail(event).xhr;
+        if (xhr) {
+          pendingBlurRequests.delete(xhr);
+        }
+      });
+    }
   }
-  function retryAfterBlur(request) {
-    const maxRetries = 40;
-    let retryCount = 0;
-    const element = request.element;
-    const eventType = request.eventType || (element instanceof HTMLFormElement ? "submit" : "click");
-    const retry = function() {
+  function deferSave(element, eventType, detail) {
+    const deadline = Date.now() + 1e3;
+    function retry() {
+      deferredSaves.delete(element);
+      if (!element.isConnected) {
+        return;
+      }
       if (pendingBlurRequests.size === 0) {
-        replayDeferredRequest(element, eventType);
+        window.htmx?.trigger(element, element instanceof HTMLFormElement ? "submit" : eventType || "click");
         return;
       }
-      if (retryCount < maxRetries) {
-        retryCount += 1;
-        window.setTimeout(retry, 25);
+      if (Date.now() >= deadline) {
+        reportFailure(detail, "Save not completed", "Field updates are still pending. Wait for them to finish, then save again.");
         return;
       }
-      console.warn("Blur-Save coordination timed out waiting for blur requests to complete.");
-      replayDeferredRequest(element, eventType);
-    };
-    window.setTimeout(retry, 25);
-  }
-  function replayDeferredRequest(element, eventType) {
-    if (!element.isConnected) {
-      return;
+      deferredSaves.set(element, window.setTimeout(retry, 25));
     }
-    window.htmx?.trigger(element, element instanceof HTMLFormElement ? "submit" : eventType);
+    deferredSaves.set(element, window.setTimeout(retry, 25));
   }
-  function cleanupBlurRequest(event) {
-    const detail = getHtmxDetail(event);
-    const element = detail.elt;
-    const requestConfig = detail.requestConfig;
-    if (element instanceof Element && requestConfig && isBlurRequest(element, requestConfig)) {
-      pendingBlurRequests.delete(element);
+  function actionName(config) {
+    if (!config.path) {
+      return "";
+    }
+    try {
+      return new URL(config.path, window.location.href).pathname.split("/").filter(Boolean).pop() || "";
+    } catch {
+      return "";
     }
   }
-  function isBlurRequest(element, requestConfig) {
-    return element.hasAttribute("hx-trigger") && (element.getAttribute("hx-trigger") || "").includes("blur") && !!requestConfig.path && (requestConfig.path.includes("/SetValue") || requestConfig.path.includes("/UpdateField") || requestConfig.path.includes("/ValueChanged"));
+  function isBlurRequest(element, config) {
+    const trigger = element.getAttribute("hx-trigger") || element.getAttribute("data-hx-trigger") || "";
+    return /(?:^|[,\s])blur(?:$|[,\s\[])/.test(trigger) && ["SetValue", "UpdateField", "ValueChanged"].includes(actionName(config));
   }
-  function isSaveRequest(requestConfig) {
-    return !!requestConfig.path && (requestConfig.path.includes("/Save") || requestConfig.path.includes("/Submit") || requestConfig.path.includes("/Update") || requestConfig.path.includes("/Create"));
+  function isSaveRequest(config) {
+    return ["Save", "Submit", "Update", "Create"].includes(actionName(config));
   }
 
   // tools/runtime/src/behaviors/error-handling.ts
   function installErrorHandling() {
-    ensureGlobalErrorRegion();
+    setFailureReporter((detail, title, message) => showErrorFragment(detail, createErrorFragment(title, message)));
     document.addEventListener("htmx:beforeRequest", clearRequestError);
     document.addEventListener("htmx:responseError", showResponseError);
     document.addEventListener("htmx:sendError", function(event) {
@@ -279,7 +316,19 @@
     if (!source) {
       return null;
     }
-    return source.cloneNode(true);
+    const title = source.querySelector("[data-hc-error-title]");
+    const message = source.querySelector("[data-hc-error-message]");
+    if (!title?.textContent?.trim() || !message?.textContent?.trim()) {
+      return null;
+    }
+    const safeFragment = createErrorFragment(title.textContent, message.textContent);
+    for (const name of ["data-hc-error-kind", "data-hc-component-id"]) {
+      const value = source.getAttribute(name);
+      if (value !== null) {
+        safeFragment.setAttribute(name, value);
+      }
+    }
+    return safeFragment;
   }
   function createErrorFragment(title, message) {
     const wrapper = document.createElement("div");
@@ -349,21 +398,62 @@
     return region;
   }
 
+  // tools/runtime/src/selectors.ts
+  function resolveElementSelector(source, selector, scope) {
+    return resolveElementSelectorAll(source, selector, scope)[0] || null;
+  }
+  function resolveElementSelectorAll(source, selector, scope) {
+    if (!selector) {
+      return [];
+    }
+    if (selector === "this") {
+      return [source];
+    }
+    if (selector.startsWith("closest ")) {
+      const result = guardSelector(selector, () => source.closest(selector.substring("closest ".length)), null);
+      return result ? [result] : [];
+    }
+    if (selector.startsWith("find ")) {
+      const root2 = scope || source;
+      return querySelectorAll(root2, selector.substring("find ".length));
+    }
+    const root = scope || document;
+    return querySelectorAll(root, selector);
+  }
+  function querySelectorAll(root, selector) {
+    return guardSelector(selector, () => Array.from(root.querySelectorAll(selector)), []);
+  }
+  function querySelector(root, selector) {
+    return guardSelector(selector, () => root.querySelector(selector), null);
+  }
+  function guardSelector(selector, query, fallback) {
+    try {
+      return query();
+    } catch (error) {
+      if (!(error instanceof DOMException) || error.name !== "SyntaxError") {
+        throw error;
+      }
+      console.warn(`Htmx.Components ignored invalid selector: ${selector}`, error);
+      return fallback;
+    }
+  }
+  function collectMatches(root, selector) {
+    const closest = root instanceof Element ? root.closest(selector) : null;
+    return Array.from(/* @__PURE__ */ new Set([...closest ? [closest] : [], ...root.querySelectorAll(selector)]));
+  }
+
   // tools/runtime/src/behaviors/modal.ts
   var activeModal = null;
   function syncModals(root) {
-    const modals = [];
-    const closestModal = root instanceof Element ? root.closest("[data-hc-modal]") : null;
-    if (closestModal) {
-      modals.push(closestModal);
-    }
-    if (root instanceof Element && root.matches("[data-hc-modal]") && root !== closestModal) {
-      modals.push(root);
-    }
-    modals.push(...Array.from(root.querySelectorAll("[data-hc-modal]")).filter((modal) => !modals.includes(modal)));
-    modals.forEach((modal) => prepareModal(asModal(modal)));
+    collectMatches(root, "[data-hc-modal]").forEach((modal) => prepareModal(asModal(modal)));
   }
   function installModalBehavior() {
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape" && activeModal && typeof activeModal.showModal !== "function") {
+        event.preventDefault();
+        closeModal(activeModal);
+      }
+    });
     document.addEventListener("click", function(event) {
       const closeTrigger = event.target instanceof Element ? event.target.closest("[data-hc-modal-close]") : null;
       if (!closeTrigger) {
@@ -412,7 +502,7 @@
   function requestTargetedModalBody(trigger, modal, target) {
     const configuredTarget = modal.getAttribute("data-hc-modal-body-target");
     const targetSelector = trigger.getAttribute("hx-target") || trigger.getAttribute("data-hx-target");
-    const body = configuredTarget ? document.querySelector(configuredTarget) : modal.querySelector("[data-hc-modal-body]");
+    const body = configuredTarget ? querySelector(document, configuredTarget) : modal.querySelector("[data-hc-modal-body]");
     if (!body || target !== body) {
       return false;
     }
@@ -445,7 +535,7 @@
   }
   function handleModalClosed(modal) {
     const bodySelector = modal.getAttribute("data-hc-modal-body-target");
-    const body = bodySelector ? document.querySelector(bodySelector) : modal.querySelector("[data-hc-modal-body]");
+    const body = bodySelector ? querySelector(document, bodySelector) : modal.querySelector("[data-hc-modal-body]");
     if (body) {
       body.replaceChildren();
     }
@@ -479,29 +569,6 @@
     });
   }
 
-  // tools/runtime/src/selectors.ts
-  function resolveElementSelector(source, selector, scope) {
-    return resolveElementSelectorAll(source, selector, scope)[0] || null;
-  }
-  function resolveElementSelectorAll(source, selector, scope) {
-    if (!selector) {
-      return [];
-    }
-    if (selector === "this") {
-      return [source];
-    }
-    if (selector.startsWith("closest ")) {
-      const result = source.closest(selector.substring("closest ".length));
-      return result ? [result] : [];
-    }
-    if (selector.startsWith("find ")) {
-      const root2 = scope || source;
-      return Array.from(root2.querySelectorAll(selector.substring("find ".length)));
-    }
-    const root = scope || document;
-    return Array.from(root.querySelectorAll(selector));
-  }
-
   // tools/runtime/src/behaviors/request-lifecycle.ts
   var pendingRequestStates = /* @__PURE__ */ new WeakMap();
   var pendingElementReferences = /* @__PURE__ */ new WeakMap();
@@ -528,22 +595,32 @@
     restorePendingState(event);
     const scope = resolveRequestScope(trigger, detail);
     const state = { releases: [] };
-    if (scope) {
-      retainPendingReference(state, scope, "scope", function() {
-        const previousBusy = scope.getAttribute("aria-busy");
-        scope.classList.add("hc-request-pending");
-        scope.setAttribute("aria-busy", "true");
-        return { previousBusy };
-      }, function(previous) {
-        scope.classList.remove("hc-request-pending");
-        restoreNullableAttribute(scope, "aria-busy", previous.previousBusy);
+    try {
+      if (scope) {
+        retainPendingReference(state, scope, "scope", function() {
+          const previousBusy = scope.getAttribute("aria-busy");
+          scope.classList.add("hc-request-pending");
+          scope.setAttribute("aria-busy", "true");
+          return { previousBusy };
+        }, function(previous) {
+          scope.classList.remove("hc-request-pending");
+          restoreNullableAttribute(scope, "aria-busy", previous.previousBusy);
+        });
+      }
+      const disableMode = getPendingOption(trigger, scope, "pendingDisable", "trigger");
+      disablePendingElements(state, trigger, scope, disableMode);
+      dimStaleRegions(state, trigger, scope, detail);
+      showPendingIndicators(state, trigger, scope);
+      pendingRequestStates.set(requestKey, state);
+      queueMicrotask(() => {
+        if (event.defaultPrevented) {
+          restorePendingState(event);
+        }
       });
+    } catch (error) {
+      releasePendingState(state);
+      throw error;
     }
-    const disableMode = getPendingOption(trigger, scope, "pendingDisable", "trigger");
-    disablePendingElements(state, trigger, scope, disableMode);
-    dimStaleRegions(state, trigger, scope, detail);
-    showPendingIndicators(state, trigger, scope);
-    pendingRequestStates.set(requestKey, state);
   }
   function restorePendingState(event) {
     const requestKey = getRequestKey(getHtmxDetail(event));
@@ -555,6 +632,9 @@
       return;
     }
     pendingRequestStates.delete(requestKey);
+    releasePendingState(state);
+  }
+  function releasePendingState(state) {
     for (let index = state.releases.length - 1; index >= 0; index -= 1) {
       state.releases[index]();
     }
@@ -576,7 +656,7 @@
     }
     if (disableMode === "scope" && scope) {
       const disableSelector = getPendingOption(trigger, scope, "pendingDisableSelector", null) || "button, input, select, textarea, a[href], [tabindex]";
-      const elements = Array.from(scope.querySelectorAll(disableSelector)).filter(function(element) {
+      const elements = querySelectorAll(scope, disableSelector).filter(function(element) {
         return element !== scope && !element.hasAttribute("data-hc-no-pending-disable");
       });
       elements.forEach(function(element) {
@@ -744,16 +824,7 @@
     });
   }
   function syncTables(root) {
-    const tables = [];
-    const closestTable = root instanceof Element ? root.closest("[data-hc-table-component]") : null;
-    if (closestTable) {
-      tables.push(closestTable);
-    }
-    if (root instanceof Element && root.matches("[data-hc-table-component]") && root !== closestTable) {
-      tables.push(root);
-    }
-    tables.push(...Array.from(root.querySelectorAll("[data-hc-table-component]")).filter((table) => !tables.includes(table)));
-    tables.forEach(syncTableEditing);
+    collectMatches(root, "[data-hc-table-component]").forEach(syncTableEditing);
   }
   function syncTableEditing(table) {
     const component = table.closest("[data-hc-table-component]") || table;
@@ -879,65 +950,70 @@
   }
 
   // tools/runtime/src/index.ts
-  var runtimeConfig = getRuntimeConfig();
   var runtimeState = getRuntimeState();
-  installConfiguredBehaviors(runtimeConfig.behaviors);
-  var activeRuntimeConfig = {
-    behaviors: Array.from(runtimeState.installedBehaviors)
-  };
+  for (const name of getRuntimeConfig().behaviors) {
+    runtimeState.requestedBehaviors.add(name);
+  }
+  var activeRuntimeConfig = { behaviors: Array.from(runtimeState.installedBehaviors) };
   function init(root) {
     const initRoot = root instanceof Element || root instanceof Document ? root : document;
-    for (const behaviorName of activeRuntimeConfig.behaviors) {
-      const behavior = findBehavior(behaviorName);
-      behavior?.sync?.(initRoot);
+    for (const name of runtimeState.installedBehaviors) {
+      findBehavior(name)?.sync?.(initRoot);
     }
     dispatchComponentEvent("htmx-components:load", initRoot, { root: initRoot });
   }
-  defineCustomElements();
   window.HtmxComponents = {
     config: activeRuntimeConfig,
     init,
     installedBehaviors: activeRuntimeConfig.behaviors
   };
-  registerLoadHandler();
-  init(document.body);
-  function installConfiguredBehaviors(behaviorNames) {
-    for (const name of behaviorNames) {
-      const behavior = findBehavior(name);
-      if (!behavior) {
-        continue;
-      }
-      if (!runtimeState.installedBehaviors.has(behavior.name)) {
-        behavior.install();
-        runtimeState.installedBehaviors.add(behavior.name);
-      }
-    }
-  }
-  function registerLoadHandler() {
-    if (runtimeState.loadHandlerRegistered) {
-      return;
-    }
+  if (!runtimeState.loadHandlerRegistered) {
     runtimeState.loadHandlerRegistered = true;
-    if (window.htmx?.onLoad) {
-      window.htmx.onLoad(function(root) {
-        window.HtmxComponents?.init(root);
-      });
-      return;
+    document.addEventListener("htmx:load", function(event) {
+      const root = getHtmxDetail(event).elt;
+      if (!runtimeState.initialBody || !(root instanceof Element) || root === runtimeState.initialBody) {
+        return;
+      }
+      window.HtmxComponents?.init(root);
+    });
+  }
+  if (document.readyState === "loading") {
+    if (!runtimeState.startupScheduled) {
+      runtimeState.startupScheduled = true;
+      document.addEventListener("DOMContentLoaded", start, { once: true });
     }
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", function() {
-        window.HtmxComponents?.init(document.body);
-      }, { once: true });
+  } else {
+    start();
+  }
+  function start() {
+    if (!window.htmx && !runtimeState.warnedMissingHtmx) {
+      runtimeState.warnedMissingHtmx = true;
+      console.warn("Htmx.Components requires HTMX to load before the runtime. Load HTMX first, then the deferred runtime script.");
+    }
+    for (const name of runtimeState.requestedBehaviors) {
+      if (!runtimeState.installedBehaviors.has(name)) {
+        findBehavior(name)?.install();
+        runtimeState.installedBehaviors.add(name);
+      }
+    }
+    const behaviors = window.HtmxComponents?.config.behaviors;
+    if (behaviors) {
+      behaviors.splice(0, behaviors.length, ...runtimeState.installedBehaviors);
+    }
+    defineCustomElements();
+    if (!runtimeState.initialBody) {
+      runtimeState.initialBody = document.body;
+      window.HtmxComponents?.init(document.body);
     }
   }
   function getRuntimeState() {
-    const stateContainer = window;
-    if (!stateContainer.__htmxComponentsRuntimeState) {
-      stateContainer.__htmxComponentsRuntimeState = {
-        installedBehaviors: /* @__PURE__ */ new Set(),
-        loadHandlerRegistered: false
-      };
-    }
-    return stateContainer.__htmxComponentsRuntimeState;
+    const container2 = window;
+    return container2.__htmxComponentsRuntimeState ?? (container2.__htmxComponentsRuntimeState = {
+      installedBehaviors: /* @__PURE__ */ new Set(),
+      requestedBehaviors: /* @__PURE__ */ new Set(),
+      loadHandlerRegistered: false,
+      startupScheduled: false,
+      warnedMissingHtmx: false
+    });
   }
 })();

@@ -1,4 +1,5 @@
 import { getHtmxDetail } from "../htmx-events";
+import { reportFailure } from "../failures";
 
 interface AuthRetryRequestContext {
   elt?: unknown;
@@ -8,7 +9,7 @@ interface AuthRetryRequestContext {
 }
 
 type ReplayEventInit = EventInit | MouseEventInit | KeyboardEventInit | CustomEventInit<unknown>;
-type ReplayEventConstructor = new (type: string, eventInitDict?: ReplayEventInit) => Event;
+type ReplayEventFactory = (type: string, eventInitDict?: ReplayEventInit) => Event;
 
 const authRetryRequestContexts = new WeakMap<object, AuthRetryRequestContext>();
 let authRetryInProgress = false;
@@ -57,15 +58,21 @@ export function installAuthenticationRetry(): void {
 
     try {
       const loginUrl = failureHeader.substring("popup-login:".length);
+      const loginOrigin = new URL(loginUrl, window.location.href).origin;
       const popup = window.open(loginUrl, "authPopup", "width=600,height=700");
 
-      const loginSuccess = await new Promise<boolean>(function (resolve) {
+      if (!popup) {
+        reportFailure(detail, "Sign in required", "The sign-in popup was blocked. Allow popups for this site and try again.");
+        return;
+      }
+
+      const loginResult = await new Promise<"success" | "closed" | "timeout">(function (resolve) {
         let completed = false;
         const timeoutMs = 30000;
         let closeTimer = 0;
         let timeoutTimer = 0;
 
-        function finish(success: boolean): void {
+        function finish(result: "success" | "closed" | "timeout"): void {
           if (completed) {
             return;
           }
@@ -74,32 +81,41 @@ export function installAuthenticationRetry(): void {
           window.removeEventListener("message", listener);
           window.clearInterval(closeTimer);
           window.clearTimeout(timeoutTimer);
-          resolve(success);
+          resolve(result);
         }
 
         function listener(messageEvent: MessageEvent): void {
-          if (messageEvent.data === "login-success") {
-            finish(true);
+          if (messageEvent.data === "login-success" && messageEvent.origin === loginOrigin && messageEvent.source === popup) {
+            finish("success");
           }
         }
 
         closeTimer = window.setInterval(function () {
-          if (popup?.closed) {
-            finish(false);
+          if (popup.closed) {
+            finish("closed");
           }
         }, 250);
         timeoutTimer = window.setTimeout(function () {
-          finish(false);
+          finish("timeout");
         }, timeoutMs);
 
         window.addEventListener("message", listener);
       });
 
-      if (loginSuccess && requestContext?.elt instanceof Element && requestContext.elt.isConnected) {
-        const { elt, eventType, eventClass, eventInit } = requestContext;
-        const EventCtor = getEventConstructor(eventClass);
-        elt.dispatchEvent(new EventCtor(eventType, eventInit));
+      if (loginResult !== "success") {
+        reportFailure(detail, "Sign in required", loginResult === "closed"
+          ? "The sign-in popup was closed. Please try again."
+          : "Sign-in timed out. Please try again.");
+        return;
       }
+
+      if (requestContext?.elt instanceof Element && requestContext.elt.isConnected) {
+        const { elt, eventType, eventClass, eventInit } = requestContext;
+        const createEvent = getReplayEventFactory(eventClass);
+        elt.dispatchEvent(createEvent(eventType, eventInit));
+      }
+    } catch {
+      reportFailure(detail, "Sign in required", "Sign-in could not be completed. Please try again.");
     } finally {
       authRetryInProgress = false;
     }
@@ -162,7 +178,11 @@ function getEventInit(event: Event): ReplayEventInit {
   return base;
 }
 
-function getEventConstructor(eventClass: string): ReplayEventConstructor {
-  const constructors = window as unknown as Record<string, ReplayEventConstructor | undefined>;
-  return constructors[eventClass] || Event;
+function getReplayEventFactory(eventClass: string): ReplayEventFactory {
+  switch (eventClass) {
+    case "MouseEvent": return (type, init) => new MouseEvent(type, init as MouseEventInit);
+    case "KeyboardEvent": return (type, init) => new KeyboardEvent(type, init as KeyboardEventInit);
+    case "CustomEvent": return (type, init) => new CustomEvent(type, init as CustomEventInit<unknown>);
+    default: return (type, init) => new Event(type, init);
+  }
 }

@@ -20,15 +20,40 @@ export function resolveElementSelectorAll(
   }
 
   if (selector.startsWith("closest ")) {
-    const result = source.closest(selector.substring("closest ".length));
+    const result = guardSelector(selector, () => source.closest(selector.substring("closest ".length)), null);
     return result ? [result] : [];
   }
 
   if (selector.startsWith("find ")) {
     const root = scope || source;
-    return Array.from(root.querySelectorAll(selector.substring("find ".length)));
+    return querySelectorAll(root, selector.substring("find ".length));
   }
 
   const root = scope || document;
-  return Array.from(root.querySelectorAll(selector));
+  return querySelectorAll(root, selector);
+}
+
+export function querySelectorAll(root: Element | Document, selector: string): Element[] {
+  return guardSelector(selector, () => Array.from(root.querySelectorAll(selector)), []);
+}
+
+export function querySelector(root: Element | Document, selector: string): Element | null {
+  return guardSelector(selector, () => root.querySelector(selector), null);
+}
+
+function guardSelector<T>(selector: string, query: () => T, fallback: T): T {
+  try {
+    return query();
+  } catch (error) {
+    if (!(error instanceof DOMException) || error.name !== "SyntaxError") {
+      throw error;
+    }
+    console.warn(`Htmx.Components ignored invalid selector: ${selector}`, error);
+    return fallback;
+  }
+}
+
+export function collectMatches(root: Element | Document, selector: string): Element[] {
+  const closest = root instanceof Element ? root.closest(selector) : null;
+  return Array.from(new Set([...(closest ? [closest] : []), ...root.querySelectorAll(selector)]));
 }
